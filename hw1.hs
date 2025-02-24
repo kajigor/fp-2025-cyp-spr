@@ -7,9 +7,17 @@ module Main where
         deriving (Eq)
 
     instance Show Lambda where
-      show (Var x)     = x
-      show (Fun x b)   = "\\" ++ x ++ ". " ++ show b
-      show (App f a)   = "(" ++ show f ++ " " ++ show a ++ ")"
+        show (Var x) = x
+        show (Fun x body) = "\\" ++ x ++ ". " ++ show body
+        show (App f a) =
+            let showF = case f of
+                    Fun _ _ -> "(" ++ show f ++ ")"
+                    _       -> show f
+                showA = case a of
+                    App _ _ -> "(" ++ show a ++ ")"
+                    Fun _ _ -> "(" ++ show a ++ ")"
+                    _       -> show a
+            in showF ++ " " ++ showA
 
 
     substitute :: Lambda -> String -> Lambda -> Lambda
@@ -75,3 +83,5 @@ module Main where
         let sub5 = substitute (Var "a") "x" (Var "z") -- no substitution
         putStrLn ("Var \"a\"[x := z] = " ++ show sub5) --a
 
+        let corr1 = App (Fun "x" (Var "x")) (Var "x")  -- (\x. x) app to x
+        putStrLn ("corr1 = " ++ show corr1)  --should be (\x. x) x
