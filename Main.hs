@@ -2,26 +2,20 @@ data Lambda
     = Variable String
     | Function String Lambda   
     | Application Lambda Lambda
+    deriving Eq
 
 instance Show Lambda where
     show (Variable x) = x
     show (Function p t) = "(λ" ++ p ++ "." ++ show t ++ ")"
     show (Application t1 t2) = "(" ++ show t1 ++ show t2 ++ ")"
 
-instance Eq Lambda where
-    (Variable x) == (Variable y) = x == y
-    (Function p t) == (Function p' t') = p == p' && t == t'
-    (Application t1 t2) == (Application t1' t2') = t1 == t1' && t2 == t2'
-    _ == _ = False
-
-
-substitution :: Lambda -> Lambda -> Lambda -> Lambda
-substitution (Variable name) (Variable x) y = if name == x then y else Variable name
-substitution (Function p term) (Variable x) y
-    | p == x = Function p term                                   -- if x isn't free we cannot substitute it
-    | otherwise = Function p (substitution term (Variable x) y)  -- otherwise consider the body
-substitution (Application t1 t2) (Variable x) y = 
-    Application (substitution t1 (Variable x) y) (substitution t2 (Variable x) y)
+substitution :: Lambda -> String -> Lambda -> Lambda
+substitution (Variable name) x y = if name == x then y else Variable name
+substitution (Function p term) x y
+    | p == x = Function p term                        -- if x isn't free we cannot substitute it
+    | otherwise = Function p (substitution term x y)  -- otherwise consider the body
+substitution (Application t1 t2) x y = 
+    Application (substitution t1 x y) (substitution t2 x y)
 
 
 class AlphaEq a where
@@ -38,6 +32,7 @@ instance AlphaEq Lambda where
                 Nothing -> x == y
         alphaEq' env (Function x t) (Function y t') = alphaEq' ((x, y) : env) t t'
         alphaEq' env (Application t1 t2) (Application t1' t2') = alphaEq' env t1 t1' && alphaEq' env t2 t2'
+        alphaEq' _ _ _ = False
 
 main :: IO ()
 main = do
@@ -80,9 +75,9 @@ main = do
     
     -- Check substitution
     putStrLn "Substitution tests:"
-    let subst1 = substitution id1 (Variable "x") (Variable "w")
+    let subst1 = substitution id1 "x" (Variable "w")
     putStrLn $ "substitution " ++ show id1 ++ " ('x' -> 'w') = " ++ show subst1
     if subst1 == id1 then putStrLn "Correct" else putStrLn "Incorrect"
-    let subst2 = substitution term1 (Variable "z") (Variable "w")
+    let subst2 = substitution term1 "z" (Variable "w")
     putStrLn $ "substitution " ++ show term1 ++ " ('z' -> 'w') = " ++ show subst2
     if subst2 == Function "x" (Application (Variable "x") (Variable "w")) then putStrLn "Correct" else putStrLn "Incorrect"
