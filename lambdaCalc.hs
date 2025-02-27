@@ -6,18 +6,12 @@ data Lambda
     = Var String         -- Variable (e.g., "x")
     | Abs String Lambda  -- Lambda-abstraction (λx.M)
     | App Lambda Lambda  -- Application (M N)
+    deriving Eq
 
 instance Show Lambda where
     show (Var x) = x
     show (Abs x body) = "(λ" ++ x ++ "." ++ show body ++ ")"
     show (App f x) = "(" ++ show f ++ show x ++ ")"
-
-
-instance Eq Lambda where
-    (Var x) == (Var y) = x == y
-    (Abs x body1) == (Abs y body2) = x == y && body1 == body2
-    (App f1 x1) == (App f2 x2) = f1 == f2 && x1 == x2
-    _ == _ = False
 
 simpleSubstitute :: String -> Lambda -> Lambda -> Lambda
 simpleSubstitute var new (Var x) = if (x == var) then new else (Var x)
@@ -60,17 +54,15 @@ instance AlphaEq Lambda where
     alphaEq (App f1 x1) (App f2 x2) = (alphaEq f1 f2) && (alphaEq x1 x2)
     alphaEq (Abs x body1) (Abs y body2)
         | x == y = (alphaEq body1 body2)
-        | otherwise =
-                    let used  = freeVars body1 ++ freeVars body2
-                        fresh = freshVar used
-                        in alphaEq (renameFree x fresh body1) (renameFree y fresh body2)
-
+        | otherwise = alphaEq (simpleSubstitute x (Var y) body1) body2
+    alphaEq _ _ = False
 
 -- Experiments and tests
 -- All output comparisons have to return True
 
 main :: IO ()
 main = do
+
     -- Lambda Terms
     let term1 = (Var "x")
     let term2 = (Abs "x" (Var "x"))
