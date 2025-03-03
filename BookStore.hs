@@ -1,7 +1,8 @@
-module BookStore where
+module BookStore (main) where
 
 import Data.List (intercalate)
 import Data.List.NonEmpty qualified as NE
+import Debug.Trace (traceShowId)
 
 data Person = Person
   { firstName :: String,
@@ -10,7 +11,7 @@ data Person = Person
   }
 
 instance Show Person where
-  show p = undefined
+  show p = firstName p ++ " " ++ lastName p ++ ", born " ++ show (yearOfBirth p)
 
 -- A book has at least one author, thus we use `NonEmpty` which is a list with at least one element.
 -- See https://hackage.haskell.org/package/base-4.21.0.0/docs/Data-List-NonEmpty.html.
@@ -23,33 +24,46 @@ data Book = Book
   }
 
 instance Show Book where
-  show b = undefined 
+  show b =
+    intercalate "\n" $
+      [title b, tab ++ "Authors:"]
+        ++ NE.toList (NE.map (((tab ++ tab) ++) . show) (authors b))
+        ++ [ tab ++ "Published: " ++ show (yearOfPublication b),
+             tab ++ "Price: " ++ show (price b)
+           ]
+    where
+      tab = "    "
 
 -- The `type` keyword introduces a type alias.
 -- `[Book]` and `Catalog` can be used interchangeably.
 -- In error messages, you will only see `[Book]`
 type Catalog = [Book]
 
--- We use `OVERLAPPING` here to notify GHC that it should use this instance of `Show` even if 
--- it sees other possibilities, including for a polymorphic list `[a]`. 
+-- We use `OVERLAPPING` here to notify GHC that it should use this instance of `Show` even if
+-- it sees other possibilities, including for a polymorphic list `[a]`.
 -- See: https://downloads.haskell.org/ghc/latest/docs/users_guide/exts/instances.html#instance-overlap
 instance {-# OVERLAPPING #-} Show Catalog where
-  show bs = undefined 
+  show = intercalate "\n" . map show
 
 -- Find all books which have been published before the given year
 oldBooks :: Int -> Catalog -> Catalog
-oldBooks maxYearOfPublication catalog =
-  undefined 
+oldBooks maxYearOfPublication = filter ((< maxYearOfPublication) . yearOfPublication)
 
 -- At least one of the authors should satisfy the predicate.
 booksByAuthor :: (Person -> Bool) -> Catalog -> Catalog
-booksByAuthor p catalog =
-  undefined 
+booksByAuthor p = filter (any p . authors)
 
 -- Apply a given discount to the books which satisfy the predicate
 discount :: Double -> (Book -> Bool) -> Catalog -> Catalog
-discount rate p catalog =
-  undefined 
+discount rate p = map (\b -> if p b then applyDiscount b else b)
+  where
+    applyDiscount book = book {price = price book * (1 - rate)}
+
+discount20thCentury :: Catalog -> Catalog
+discount20thCentury = discount 0.2 (\b -> yearOfPublication b < 2000)
+
+booksBy1960thAuthors :: Catalog -> Catalog
+booksBy1960thAuthors = booksByAuthor (\p -> yearOfBirth p >= 1960 && yearOfBirth p < 1970)
 
 sampleCatalog :: Catalog
 sampleCatalog =
@@ -99,3 +113,7 @@ main = do
   print $ booksByAuthor (\author -> yearOfBirth author > 1980) sampleCatalog
   putStrLn "40% off!"
   print $ discount 0.4 (const True) sampleCatalog
+  putStrLn "20th century discounted!"
+  print $ discount20thCentury sampleCatalog
+  putStrLn "Books by authors born in 1960s:"
+  print $ booksBy1960thAuthors sampleCatalog
