@@ -10,7 +10,7 @@ data Person = Person
   }
 
 instance Show Person where
-  show p = undefined
+  show (Person name surname year) = name ++ " " ++ surname ++ ", born " ++ show year
 
 -- A book has at least one author, thus we use `NonEmpty` which is a list with at least one element.
 -- See https://hackage.haskell.org/package/base-4.21.0.0/docs/Data-List-NonEmpty.html.
@@ -23,7 +23,12 @@ data Book = Book
   }
 
 instance Show Book where
-  show b = undefined 
+  show (Book title authors year price) =
+    title ++ "\n" ++
+    "        Authors:\n" ++
+    "                " ++ intercalate "\n                " (map show (NE.toList authors)) ++ "\n" ++
+    "        Published: " ++ show year ++ "\n" ++
+    "        Price: " ++ show price
 
 -- The `type` keyword introduces a type alias.
 -- `[Book]` and `Catalog` can be used interchangeably.
@@ -34,22 +39,30 @@ type Catalog = [Book]
 -- it sees other possibilities, including for a polymorphic list `[a]`. 
 -- See: https://downloads.haskell.org/ghc/latest/docs/users_guide/exts/instances.html#instance-overlap
 instance {-# OVERLAPPING #-} Show Catalog where
-  show bs = undefined 
+  show catalog = intercalate "\n" (map show catalog)
+
 
 -- Find all books which have been published before the given year
 oldBooks :: Int -> Catalog -> Catalog
-oldBooks maxYearOfPublication catalog =
-  undefined 
+oldBooks maxYear catalog = filter (\book -> yearOfPublication book < maxYear) catalog
 
 -- At least one of the authors should satisfy the predicate.
 booksByAuthor :: (Person -> Bool) -> Catalog -> Catalog
-booksByAuthor p catalog =
-  undefined 
+booksByAuthor authorCondition catalog =
+  filter hasMatchingAuthor catalog
+  where
+    hasMatchingAuthor book =
+      any authorCondition (NE.toList (authors book))
 
 -- Apply a given discount to the books which satisfy the predicate
 discount :: Double -> (Book -> Bool) -> Catalog -> Catalog
-discount rate p catalog =
-  undefined 
+discount rate condition catalog =
+  map applyDiscount catalog
+  where
+    applyDiscount book =
+      if condition book
+        then book {price = price book * (1 - rate)}
+        else book
 
 sampleCatalog :: Catalog
 sampleCatalog =
@@ -99,3 +112,7 @@ main = do
   print $ booksByAuthor (\author -> yearOfBirth author > 1980) sampleCatalog
   putStrLn "40% off!"
   print $ discount 0.4 (const True) sampleCatalog
+  putStrLn "By authors born before 1984:"
+  print $ booksByAuthor (\author -> yearOfBirth author < 1984) sampleCatalog
+  putStrLn "Recent books at a 25% discount:"
+  print $ discount 0.25 (\book -> yearOfPublication book >= 2015) sampleCatalog
