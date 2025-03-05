@@ -10,7 +10,7 @@ data Person = Person
   }
 
 instance Show Person where
-  show p = undefined
+  show p = firstName p ++ " " ++ lastName p ++ ", born " ++ show (yearOfBirth p)
 
 -- A book has at least one author, thus we use `NonEmpty` which is a list with at least one element.
 -- See https://hackage.haskell.org/package/base-4.21.0.0/docs/Data-List-NonEmpty.html.
@@ -23,7 +23,10 @@ data Book = Book
   }
 
 instance Show Book where
-  show b = undefined 
+  show b = title b ++ "\n        Authors:\n                " 
+    ++ intercalate "\n                " (NE.toList $ NE.map show $ authors b) 
+    ++ "\n        Published: " ++ show (yearOfPublication b) 
+    ++ "\n        Price: " ++ show (price b)
 
 -- The `type` keyword introduces a type alias.
 -- `[Book]` and `Catalog` can be used interchangeably.
@@ -34,22 +37,22 @@ type Catalog = [Book]
 -- it sees other possibilities, including for a polymorphic list `[a]`. 
 -- See: https://downloads.haskell.org/ghc/latest/docs/users_guide/exts/instances.html#instance-overlap
 instance {-# OVERLAPPING #-} Show Catalog where
-  show bs = undefined 
+  show bs = intercalate "\n" (map show bs)
 
 -- Find all books which have been published before the given year
 oldBooks :: Int -> Catalog -> Catalog
 oldBooks maxYearOfPublication catalog =
-  undefined 
+  [ book | book <- catalog, yearOfPublication book < maxYearOfPublication ]
 
 -- At least one of the authors should satisfy the predicate.
 booksByAuthor :: (Person -> Bool) -> Catalog -> Catalog
 booksByAuthor p catalog =
-  undefined 
+  [ book | book <- catalog, any p (authors book) ]
 
 -- Apply a given discount to the books which satisfy the predicate
 discount :: Double -> (Book -> Bool) -> Catalog -> Catalog
 discount rate p catalog =
-  undefined 
+  [ if p book then book { price = price book * (1 - rate) } else book | book <- catalog ]
 
 sampleCatalog :: Catalog
 sampleCatalog =
@@ -99,3 +102,7 @@ main = do
   print $ booksByAuthor (\author -> yearOfBirth author > 1980) sampleCatalog
   putStrLn "40% off!"
   print $ discount 0.4 (const True) sampleCatalog
+  putStrLn "50% off for books published before 2015!"
+  print $ discount 0.5 (\book -> yearOfPublication book < 2015) sampleCatalog
+  putStrLn "Books by authors born after 1970:"
+  print $ booksByAuthor (\author -> yearOfBirth author > 1970) sampleCatalog
