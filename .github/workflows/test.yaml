@@ -22,7 +22,7 @@ jobs:
         ghc-version: ${{ matrix.ghc }}
         stack-version: ${{ matrix.stack }}
 
-    - uses: actions/cache@v2
+    - uses: actions/cache@v4
       name: Cache ~/.stack
       with:
         path: ~/.stack
@@ -30,15 +30,12 @@ jobs:
 
     - name: Install dependencies
       run: |
-        cd expr
         stack build --system-ghc --test --bench --no-run-tests --no-run-benchmarks --only-dependencies
 
     - name: Build
       run: |
-        cd expr 
         stack build --system-ghc --test --bench --no-run-tests --no-run-benchmarks
 
     - name: Test
       run: |
-        cd expr
         stack test --system-ghc
