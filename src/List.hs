@@ -1,4 +1,4 @@
-module List where
+module List (perms, collapse) where
 
 
 -- Generates all permutations of the given list. 
