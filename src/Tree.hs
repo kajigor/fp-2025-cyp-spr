@@ -21,15 +21,15 @@ toList (Node _ t1 t2) = toList t1 ++ toList t2
 
 -- Fetches the k-th element in the tree 
 fetch :: Int -> Tree a -> a
-fetch k (Leaf x) = x
-fetch k (Node n t1 t2) 
+fetch _ (Leaf x) = x
+fetch k (Node _ t1 t2) 
   | k < size t1 = fetch k t1
   | otherwise = fetch (k - size t1) t2
 
 -- Updates the k-th element of a tree 
 update :: Show a => Int -> a -> Tree a -> Tree a 
-update k x (Leaf _) = Leaf x
-update k x (Node n t1 t2) 
+update _ x (Leaf _) = Leaf x
+update k x (Node _ t1 t2) 
   | k < size t1 = node (update k x t1) t2
   | otherwise = node t1 (update (k - size t1) x t2)
 
@@ -38,4 +38,4 @@ update k x (Node n t1 t2)
 -- Example of a perfect tree: Node 4 (Node 2 (Leaf 'c') (Leaf 'd')) (Node 2 (Leaf 'e') (Leaf 'f'))
 wellFormed :: Tree a -> Bool 
 wellFormed (Leaf _) = True
-wellFormed (Node n t1 t2) = size t1 == size t2 && wellFormed t1 && wellFormed t2
+wellFormed (Node _ t1 t2) = size t1 == size t2 && wellFormed t1 && wellFormed t2
