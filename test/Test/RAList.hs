@@ -32,6 +32,15 @@ runUpdate x xs =
       | k <= 0 = x : t
       | otherwise = h : updateList (k - 1) x t
 
+runToList :: (Show a, Eq a) => [a] -> TestTree
+runToList xs = testCase (show xs) $ do 
+  let raList = L.fromList xs
+  L.toList raList @?= xs
+
+runWellFormed xs = testCase (show xs) $ do 
+  let raList = L.fromList xs
+  assertBool "RAList is not well-formed" (L.wellFormed raList)
+
 
 testRAList :: TestTree
 testRAList =
@@ -39,6 +48,8 @@ testRAList =
     [ testFromList 
     , testFetch
     , testUpdate
+    , testToList
+    , testWellFormed
     ]
 
 testFromList :: TestTree 
@@ -52,3 +63,11 @@ testUpdate =
 testFetch :: TestTree
 testFetch =
   testGroup "Fetch" $ map runFetch $ Data.List.inits [0..10]
+
+testToList :: TestTree
+testToList = 
+  testGroup "ToList" $ map runToList (Data.List.inits [0..10])
+
+testWellFormed :: TestTree
+testWellFormed = 
+  testGroup "WellFormed" $ map runWellFormed (Data.List.inits [0..10])
