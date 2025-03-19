@@ -1,4 +1,12 @@
-module Tree (Tree, size, node, toList, fetch, update, wellFormed) where 
+module Tree (Tree(..)
+            , fromList
+            , size
+            , node
+            , toList
+            , fetch
+            , update
+            , wellFormed) 
+  where 
 
 -- A tree data structure with explisit size parameter in the node
 data Tree a 
@@ -13,6 +21,21 @@ size (Node n _ _) = n
 -- Smart constructor to create a node
 node :: Tree a -> Tree a -> Tree a 
 node t1 t2 = Node (size t1 + size t2) t1 t2 
+
+-- Constructs a perfect tree from a list
+fromList :: [a] -> (Tree a, [a])
+fromList xs = buildTree (length xs) xs
+  where
+    buildTree 0 _  = error "Empty list in buildTree"
+    buildTree 1 (y:ys) = (Leaf y, ys)
+    buildTree n ys = 
+      let (leftSize, rightSize) = split n
+          (leftTree, rest) = buildTree leftSize ys
+          (rightTree, rest') = buildTree rightSize rest
+      in (node leftTree rightTree, rest')
+    split n = (n `div` 2, n `div` 2 + n `mod` 2)
+  
+-- >>> fromList "abcd"
 
 -- Flattens a tree into a list 
 toList :: Tree a -> [a]
