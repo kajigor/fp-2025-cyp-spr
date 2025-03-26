@@ -11,4 +11,7 @@ perms (x:xs) = perms xs >>= \p -> map (\i -> take i p ++ [x] ++ drop i p) [0 .. 
 collapse :: [[Int]] -> [Int]
 collapse [] = []
 collapse [x] = x
-collapse (x:xs) = if sum x > 0 then x else collapse ((x ++ head xs): drop 1 xs)
+collapse (x:xs) = collapseWithSum x (sum x) xs
+    where
+        collapseWithSum res _ [] = res
+        collapseWithSum res currentSum (y:ys) = if currentSum > 0 then res else collapseWithSum (res ++ y) (currentSum + sum y) ys

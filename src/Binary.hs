@@ -3,15 +3,18 @@ module Binary where
 import Data.Maybe (fromJust)
 import Control.Monad (guard)
 
+isValidDigit :: Int -> Bool
+isValidDigit x = x == 0 || x == 1
+
 -- Checks that the given list is a valid reversed binary representation 
 isValid :: [Int] -> Maybe [Int]
 isValid [] = Nothing
 isValid [_, 0] = Nothing
 isValid [x] = do
-    guard (x == 0 || x == 1)
+    guard (isValidDigit x)
     return [x]
 isValid (x:xs) = do
-    guard (x == 0 || x == 1)
+    guard (isValidDigit x)
     rest <- isValid xs
     return (x:rest) 
 
@@ -38,10 +41,10 @@ toBinary n = do
 fromBinary :: [Int] -> Maybe Int
 fromBinary [] = Nothing
 fromBinary [x] = do
-    guard (x == 0 || x == 1)
+    guard (isValidDigit x)
     return x
 fromBinary (x:xs) = do
-    guard (x == 0 || x == 1)
+    guard (isValidDigit x)
     rest <- fromBinary xs
     return (x + 2 * rest)
 

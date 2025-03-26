@@ -25,26 +25,21 @@ type RAList a = [Digit a]
 
 -- Checks that the random-access list has correct structure
 wellFormed :: RAList a -> Bool
-wellFormed [] = True
-wellFormed (Zero:xs) = wellFormed xs
-wellFormed (One t:xs) = T.wellFormed t && wellFormed xs 
+wellFormed xs = all isWF xs
+    where
+        isWF Zero = True
+        isWF (One t) = T.wellFormed t
 
 -- Flattens a random-access list into a normal list
 toList :: RAList a -> [a] 
-toList [] = []
-toList (Zero:xs) = toList xs
-toList (One t:xs) = T.toList t ++ toList xs 
+toList = concatMap f
+    where
+        f Zero = []
+        f (One t) = T.toList t
 
 -- Generates a random-access list from a normal list 
 fromList :: [a] -> RAList a 
-fromList [] = []
-fromList [x] = [One (T.Leaf x)]
-fromList xs = let lastTreeSize = 2 ^ ((length . fromJust . toBinary . length) xs - 1) 
-  in fromList (take (length xs - lastTreeSize) xs) ++ [One (fromWellFormedList (drop (length xs - lastTreeSize) xs))] where
-    fromWellFormedList :: [a] -> T.Tree a
-    fromWellFormedList [x] = T.Leaf x
-    fromWellFormedList xs' = T.node (fromWellFormedList (take (length xs' `div` 2) xs')) (fromWellFormedList (drop (length xs' `div` 2) xs'))
-
+fromList = foldr cons nil
 
 -- Fetches the k-th element of the list 
 fetch :: Int -> RAList a -> a 
@@ -65,11 +60,15 @@ nil = []
 -- Adds a given element to the head of the list. 
 -- Should always return a well-formed list. 
 cons :: a -> RAList a -> RAList a 
-cons h t = fromList [h] ++ t
+cons h tail = insTree (T.Leaf h) tail
+    where
+        insTree t [] = [One t]
+        insTree t (Zero : ts) = One t : ts
+        insTree t (One t' : ts) = Zero : insTree (T.node t t') ts
 
 -- Splits the list into a head and a tail, if not empty. 
 -- The resulting tail should be a well-formed list. 
-uncons :: RAList a -> Maybe (a, RAList a) 
+uncons :: RAList a -> Maybe (a, RAList a)
 uncons xs =
   case toList xs of
     []     -> Nothing

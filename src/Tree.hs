@@ -38,4 +38,4 @@ update k x (Node _ t1 t2)
 -- Example of a perfect tree: Node 4 (Node 2 (Leaf 'c') (Leaf 'd')) (Node 2 (Leaf 'e') (Leaf 'f'))
 wellFormed :: Tree a -> Bool 
 wellFormed (Leaf _) = True
-wellFormed (Node _ t1 t2) = size t1 == size t2 && wellFormed t1 && wellFormed t2
+wellFormed (Node sz t1 t2) = size t1 == size t2 && wellFormed t1 && wellFormed t2 && sz == size t1 + size t2
