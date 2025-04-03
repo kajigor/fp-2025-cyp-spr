@@ -64,6 +64,6 @@ parseExpr = do
 
 main :: IO ()
 main = do
-  let input = "-1+2*3*4+-2"
+  let input = "-1 + 2 *3 * 4 +-2"
   let result = runParser parseExpr "" (T.pack input)
   print result
