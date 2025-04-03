@@ -4,9 +4,6 @@ module Main (main) where
 
 import Control.Monad (void)
 import Data.Char (isDigit)
-import Text.Megaparsec
-import Text.Megaparsec.Char
-import Data.Void
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -14,7 +11,6 @@ import Data.Void
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
-import Control.Monad (void)
 
 type Parser = Parsec Void Text
 
@@ -37,20 +33,14 @@ parseInt = do
   n <- L.decimal <* spaceConsumer
   return (IntLit n)
 
+parseNegative :: Parser Expr
+parseNegative = do
+  _ <- symbol '-'
+  int <- parseInt
+  return (Sub (IntLit 0) int)
+
 parseFactor :: Parser Expr
-parseFactor = parseInt
-
--- parseSequence :: Char -> Parser Expr -> Parser [Expr]
--- parseSequence sep p = do
---   first <- p
---   rest <-
---     many
---       ( do
---           void (char sep)
---           p
---       )
---   return (first : rest)
-
+parseFactor = parseInt <|> parseNegative
 
 -- parseTerm = chain of factors, split by * or /
 parseTerm :: Parser Expr
@@ -72,16 +62,8 @@ parseExpr = do
     return (op, expr)
   return $ foldl (\acc (op, x) -> op acc x) first rest
 
--- parseSumExpr :: Parser Expr
--- parseSumExpr = do
---   args <- parseSequence '+' parseProdExpr
---   return $ foldl1 Sum args
---
--- parseExpr :: Parser Expr
--- parseExpr = parseSumExpr
-
 main :: IO ()
 main = do
-  let input = "1+2*3*4+2"
+  let input = "-1+2*3*4+-2"
   let result = runParser parseExpr "" (T.pack input)
   print result
