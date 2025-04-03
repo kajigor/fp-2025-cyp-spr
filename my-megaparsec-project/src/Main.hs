@@ -17,6 +17,7 @@ data Expr
   | Sub Expr Expr
   | Prod Expr Expr
   | Div Expr Expr
+  | Neg Expr
   deriving (Eq, Show)
 
 evalExpr :: Expr -> Int
@@ -25,6 +26,7 @@ evalExpr (Sum a b) = evalExpr a + evalExpr b
 evalExpr (Sub a b) = evalExpr a - evalExpr b
 evalExpr (Prod a b) = evalExpr a * evalExpr b
 evalExpr (Div a b) = evalExpr a `div` evalExpr b
+evalExpr (Neg a) = -(evalExpr a)
 
 prettyPrintExpr :: Expr -> String
 prettyPrintExpr (IntLit n) = show n
@@ -32,6 +34,7 @@ prettyPrintExpr (Sum a b)  = prettyPrintExpr a ++ " + " ++ prettyPrintExpr b
 prettyPrintExpr (Sub a b)  = prettyPrintExpr a ++ " - " ++ prettyPrintParen b
 prettyPrintExpr (Prod a b) = prettyPrintParen a ++ " * " ++ prettyPrintParen b
 prettyPrintExpr (Div a b)  = prettyPrintParen a ++ " / " ++ prettyPrintParen b
+prettyPrintExpr (Neg a) = "-" ++ prettyPrintExpr a
 
 prettyPrintParen :: Expr -> String
 prettyPrintParen e = case e of
@@ -52,8 +55,7 @@ parseInt = do
 parseNegative :: Parser Expr
 parseNegative = do
   _ <- symbol '-'
-  IntLit value <- parseInt
-  return (IntLit (-value))
+  Neg <$> (parseInt <|> parseExpr)
 
 parseParens :: Parser Expr
 parseParens = do
@@ -111,3 +113,4 @@ main = do
   runTest "((-1) + (2 * 3) * 4 + (-2))" 21
   runTest "((-1) + (2 * 3) * 4 + (-2))" 21
   runTest "(-1 + 2) * 3 * (4 + (2))" 18
+  runTest "(-(1 + 2) * 3) * (4 + (-2))" (-18)
