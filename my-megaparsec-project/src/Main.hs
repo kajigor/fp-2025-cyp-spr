@@ -36,11 +36,17 @@ parseInt = do
 parseNegative :: Parser Expr
 parseNegative = do
   _ <- symbol '-'
-  int <- parseInt
-  return (Sub (IntLit 0) int)
+  Sub (IntLit 0) <$> parseInt
+
+parseParens :: Parser Expr
+parseParens = do
+  _ <- symbol '('
+  expr <- parseExpr
+  _ <- symbol ')'
+  return expr
 
 parseFactor :: Parser Expr
-parseFactor = parseInt <|> parseNegative
+parseFactor = parseInt <|> parseNegative <|> parseParens
 
 -- parseTerm = chain of factors, split by * or /
 parseTerm :: Parser Expr
@@ -64,6 +70,6 @@ parseExpr = do
 
 main :: IO ()
 main = do
-  let input = "-1 + 2 *3 * 4 +-2"
-  let result = runParser parseExpr "" (T.pack input)
-  print result
+  print $ runParser parseExpr "" (T.pack "-1 + 2 *3 * 4 +-2")
+  print $ runParser parseExpr "" (T.pack "((-1) + (2 * 3) * 4 + (-2))")
+  print $ runParser parseExpr "" (T.pack "(-1 + 2) * 3 * (4 + (2))")
