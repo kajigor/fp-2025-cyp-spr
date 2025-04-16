@@ -14,7 +14,7 @@ Each project should be followed by a written report in which the following topic
 * Why certain libraries were chosen.
 * Investigation of the performance.
 
-Choose your project [here]([https://docs.google.com/spreadsheets/d/138z6qgMBtROwDxh4niDajSIGZNb4r-ucpLowJDk7qjM/edit?usp=sharing](https://docs.google.com/spreadsheets/d/1sbGvfjiFUUyU4O3KafuZkJbIqg1IJ_gzB83Q_uSTguk/edit?usp=sharing)), 1 person per project. 
+Choose your project [here](https://docs.google.com/spreadsheets/d/1sbGvfjiFUUyU4O3KafuZkJbIqg1IJ_gzB83Q_uSTguk/edit?usp=sharing), 1 person per project. 
 
 ## 1. Markdown to HTML Converter
 
