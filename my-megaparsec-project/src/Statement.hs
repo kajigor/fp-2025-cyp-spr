@@ -4,7 +4,7 @@ module Statement
   ( Stmt(..)
   , evalStmt
   , prettyPrintStmt
-  , parseStmt
+  , parseProgram
   ) where
 
 import Data.Text (Text)
@@ -86,7 +86,7 @@ actually readInt and print not "reads and writes Ints",
 -}
 
 parseBody :: Parser Stmt
-parseBody = curly parseStmt
+parseBody = curly parseProgram
 
 readInt :: Parser Text
 readInt = lexeme $ do
@@ -111,7 +111,7 @@ parseWhile = do
 parseSeq :: Parser Stmt
 parseSeq = do
   first <- parseStmt
-  Seq first <$> parseStmt
+  Seq first <$> parseProgram
 
 parseWrite :: Parser Stmt
 parseWrite = do
@@ -136,6 +136,9 @@ semicolon = do
 
 parseStmt :: Parser Stmt
 parseStmt = do
-  stmt <- try parseRead <|> parseWrite <|> parseWhile <|> try parseAssign <|> parseSeq
+  stmt <- try parseRead <|> parseWrite <|> parseWhile <|> try parseAssign
   _ <- semicolon
   return stmt
+
+parseProgram :: Parser Stmt
+parseProgram = try parseSeq <|> parseStmt

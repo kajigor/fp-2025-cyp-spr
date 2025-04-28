@@ -53,6 +53,7 @@ test-suite my-megaparsec-project-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      ExpressionSpec
       StatementParserSpec
       Paths_my_megaparsec_project
   hs-source-dirs:

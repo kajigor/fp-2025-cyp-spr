@@ -14,7 +14,7 @@ import Parser
 
 -- Parsing helper function for tests
 parseTest :: Text -> Either (MP.ParseErrorBundle Text Void) Stmt
-parseTest = MP.parse parseStmt ""
+parseTest = MP.parse parseProgram ""
 
 spec :: Spec
 spec = do
@@ -108,9 +108,9 @@ spec = do
       parseTest `shouldFailOn` "x = 42"  -- missing semicolon
       parseTest `shouldFailOn` "print(42"  -- missing closing paren and semicolon
       
---    it "fails for invalid statements" $ do
---      parseTest `shouldFailOn` "x + y = 42;"  -- left side must be a variable
---      parseTest `shouldFailOn` "while x { a = 1; };"  -- missing parentheses around condition
+    it "fails for invalid statements" $ do
+      parseTest `shouldFailOn` "x + y = 42;"  -- left side must be a variable
+      parseTest `shouldFailOn` "while x { a = 1; };"  -- missing parentheses around condition
       
 main :: IO ()
 main = hspec spec

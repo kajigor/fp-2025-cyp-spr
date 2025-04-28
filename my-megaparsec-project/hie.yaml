@@ -17,3 +17,6 @@ cradle:
 
     - path: "./test/StatementParserSpec.hs"
       component: "my-megaparsec-project:test:my-megaparsec-project-test"
+      
+    - path: "./test/ExpressionSpec.hs"
+      component: "my-megaparsec-project:test:my-megaparsec-project-test"
