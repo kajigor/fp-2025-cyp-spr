@@ -6,6 +6,9 @@ cradle:
     - path: "./src/Expression.hs"
       component: "my-megaparsec-project:lib:my-megaparsec-project"
 
+    - path: "./src/Optimizer.hs"
+      component: "my-megaparsec-project:lib:my-megaparsec-project"
+
     - path: "./src/Parser.hs"
       component: "my-megaparsec-project:lib:my-megaparsec-project"
 
