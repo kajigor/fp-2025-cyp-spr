@@ -3,12 +3,20 @@
 module Statement
   ( Stmt(..)
   , evalStmt
+  , prettyPrintStmt
   ) where
 
 import Data.Text (Text)
-import Expression (Expr, Subst, evalExpr)
-import qualified Data.Map as M
 import Control.Monad.State
+import qualified Data.Map as M
+import qualified Data.Text.Lazy as L
+import qualified Data.Text.Lazy.Builder as B
+import Data.Void
+import Text.Megaparsec.Char
+import Control.Monad (void)
+
+import Parser
+import Expression (Expr, Subst, evalExpr, prettyPrintExpr, parseExpr)
 
 data Stmt
   = Assign Text Expr
@@ -16,6 +24,7 @@ data Stmt
   | While Expr Stmt
   | Write Expr
   | Read Text
+  deriving (Show, Eq)
 
 evalStmt :: Stmt -> State (Subst, [Int]) [Int]
 evalStmt (Assign var e) = do
@@ -51,3 +60,17 @@ evalStmt (While cond body) = do
       out2 <- evalStmt (While cond body)
       return (out1 ++ out2)
 
+prettyPrintStmt :: Stmt -> String
+prettyPrintStmt (Assign var e) = show var ++ " = " ++ prettyPrintExpr e ++ ";"
+prettyPrintStmt (Seq s1 s2) = prettyPrintStmt s1 ++ "\n" ++ prettyPrintStmt s2
+prettyPrintStmt (While cond body) = "while (" ++ prettyPrintExpr cond ++ ") {\n" ++ prettyPrintStmt body ++ "\n};"
+prettyPrintStmt (Write expr) = "print(" ++ prettyPrintExpr expr ++ ");"
+prettyPrintStmt (Read var) = show var ++ " = readLine();"
+
+-- TODO:
+-- parseStmt
+-- parseAssign
+-- parseWhile
+-- parseWrite
+-- parseRead
+-- parseBlock

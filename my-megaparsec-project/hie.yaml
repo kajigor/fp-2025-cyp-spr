@@ -1,0 +1,10 @@
+cradle:
+  stack:
+    - path: "./src/Main.hs"
+      component: "my-megaparsec-project:exe:my-megaparsec-project"
+
+    - path: "./src/Expression.hs"
+      component: "my-megaparsec-project:exe:my-megaparsec-project"
+
+    - path: "./src/Statement.hs"
+      component: "my-megaparsec-project:exe:my-megaparsec-project"

@@ -11,9 +11,7 @@ module Expression
   , parseParens
   , parseNegative
   , parseInt
-  , symbol
-  , spaceConsumer
-  , Parser
+  , parseVarLit
   , Subst
   ) where
 
@@ -22,10 +20,10 @@ import qualified Data.Text as T
 import Data.Void
 import Text.Megaparsec
 import Text.Megaparsec.Char
-import qualified Text.Megaparsec.Char.Lexer as L
 import qualified Data.Map as M
 
-type Parser = Parsec Void Text
+import Parser
+
 type Subst = M.Map Text Int
 
 data Expr
@@ -61,16 +59,11 @@ prettyPrintParen e = case e of
   IntLit _ -> prettyPrintExpr e
   _        -> "(" ++ prettyPrintExpr e ++ ")"
 
-spaceConsumer :: Parser ()
-spaceConsumer = L.space space1 empty empty
-
-symbol :: Char -> Parser Char
-symbol c = char c <* spaceConsumer
-
 parseInt :: Parser Expr
-parseInt = do
-  n <- L.decimal <* spaceConsumer
-  return (IntLit n)
+parseInt = IntLit <$> integer
+
+parseVarLit :: Parser Expr
+parseVarLit = VarLit <$> identifier
 
 parseNegative :: Parser Expr
 parseNegative = do
@@ -78,14 +71,10 @@ parseNegative = do
   Neg <$> (parseInt <|> parseExpr)
 
 parseParens :: Parser Expr
-parseParens = do
-  _ <- symbol '('
-  expr <- parseExpr
-  _ <- symbol ')'
-  return expr
+parseParens = parens parseExpr
 
 parseFactor :: Parser Expr
-parseFactor = parseInt <|> parseNegative <|> parseParens
+parseFactor = parseInt <|> parseVarLit <|> parseNegative <|> parseParens
 
 -- parseTerm = chain of factors, split by * or /
 parseTerm :: Parser Expr

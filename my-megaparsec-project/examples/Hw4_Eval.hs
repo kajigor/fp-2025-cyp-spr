@@ -108,6 +108,20 @@ program5 :: Stmt
 program5 =
   Read "x" `Seq` Write (Times (Variable "x") (Variable "x"))
 
+prettyPrintExpr :: Expr -> String
+prettyPrintExpr (Variable v) = v
+prettyPrintExpr (Constant c) = show c
+prettyPrintExpr (Plus e1 e2) = "(" ++ prettyPrintExpr e1 ++ " + " ++ prettyPrintExpr e2 ++ ")"
+prettyPrintExpr (Minus e1 e2) = "(" ++ prettyPrintExpr e1 ++ " - " ++ prettyPrintExpr e2 ++ ")"
+prettyPrintExpr (Times e1 e2) = "(" ++ prettyPrintExpr e1 ++ " * " ++ prettyPrintExpr e2 ++ ")"
+prettyPrintExpr (Div e1 e2) = "(" ++ prettyPrintExpr e1 ++ " / " ++ prettyPrintExpr e2 ++ ")"
+
+prettyPrintStmt :: Stmt -> String
+prettyPrintStmt (Assign var e) = var ++ " = " ++ prettyPrintExpr e ++ ";"
+prettyPrintStmt (Seq s1 s2) = prettyPrintStmt s1 ++ "\n" ++ prettyPrintStmt s2
+prettyPrintStmt (While cond body) = "while (" ++ prettyPrintExpr cond ++ ") {\n" ++ prettyPrintStmt body ++ "\n};"
+prettyPrintStmt (Write expr) = "print(" ++ prettyPrintExpr expr ++ ");"
+prettyPrintStmt (Read var) = var ++ " = readLine();"
 
 fibProgram =
   Read "n"
@@ -130,20 +144,27 @@ runProgram p input = evalState (evalStmt p) (M.empty, input)
 main :: IO ()
 main = do
   print $ runProgram program [] -- [777,26,13,36]
-
   print $ runProgram program2 [4] -- 10
   print $ runProgram program3 [] -- 15
   print $ runProgram program4 [] -- 5
-
   print $ runProgram program5 [5] -- 25
   print $ runProgram program5 [7] -- 49
   print $ runProgram program5 [9] -- 81
-
   print $ runProgram fibProgram [4] -- 3
   print $ runProgram fibProgram [5] -- 5
   print $ runProgram fibProgram [7] -- 13
   print $ runProgram fibProgram [20] -- 6765
 
-
-
+  putStrLn "Program 1:"
+  putStrLn $ prettyPrintStmt program
+  putStrLn "\nProgram 2:"
+  putStrLn $ prettyPrintStmt program2
+  putStrLn "\nProgram 3:"
+  putStrLn $ prettyPrintStmt program3
+  putStrLn "\nProgram 4:"
+  putStrLn $ prettyPrintStmt program4
+  putStrLn "\nProgram 5:"
+  putStrLn $ prettyPrintStmt program5
+  putStrLn "\nFibonacci Program:"
+  putStrLn $ prettyPrintStmt fibProgram
 
