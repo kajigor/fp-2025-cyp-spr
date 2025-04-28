@@ -4,7 +4,16 @@ cradle:
       component: "my-megaparsec-project:exe:my-megaparsec-project"
 
     - path: "./src/Expression.hs"
-      component: "my-megaparsec-project:exe:my-megaparsec-project"
+      component: "my-megaparsec-project:lib:my-megaparsec-project"
+
+    - path: "./src/Parser.hs"
+      component: "my-megaparsec-project:lib:my-megaparsec-project"
 
     - path: "./src/Statement.hs"
-      component: "my-megaparsec-project:exe:my-megaparsec-project"
+      component: "my-megaparsec-project:lib:my-megaparsec-project"
+
+    - path: "./test/Spec.hs"
+      component: "my-megaparsec-project:test:my-megaparsec-project-test"
+
+    - path: "./test/StatementParserSpec.hs"
+      component: "my-megaparsec-project:test:my-megaparsec-project-test"

@@ -16,8 +16,6 @@ module Expression
   ) where
 
 import Data.Text (Text)
-import qualified Data.Text as T
-import Data.Void
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Data.Map as M

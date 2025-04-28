@@ -1,22 +1,26 @@
-{-# LANGUAGE OverloadedStrings #-}
+
 
 module Parser
-  ( Parser
-  , spaceConsumer
-  , symbol
-  , lexeme
-  , integer
-  , parens
-  , identifier
-  ) where
+  ( Parser,
+    spaceConsumer,
+    symbol,
+    lexeme,
+    integer,
+    parens,
+    curly,
+    identifier,
+    keyword,
+  )
+where
 
+import Data.Char (isAlpha, isAlphaNum)
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Void
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
-import Data.Char (isAlphaNum, isAlpha)
+import GHC.TypeLits ()
 
 -- | Type synonym for the parser
 type Parser = Parsec Void Text
@@ -39,7 +43,11 @@ integer = lexeme L.decimal
 
 -- | Parse something between parentheses
 parens :: Parser a -> Parser a
-parens p = between (symbol '(') (symbol ')') p
+parens = between (symbol '(') (symbol ')')
+
+-- | Parse something between parentheses
+curly :: Parser a -> Parser a
+curly = between (symbol '{') (symbol '}')
 
 -- | Parse an identifier (letter followed by alphanumeric characters)
 identifier :: Parser Text
@@ -47,3 +55,10 @@ identifier = lexeme $ do
   first <- satisfy isAlpha
   rest <- many (satisfy isAlphaNum)
   return $ T.pack (first : rest)
+
+-- | Parse a keyword (expected to be equal given one)
+keyword :: Text -> Parser Text
+keyword kw = lexeme $ try $ do
+  _ <- string kw
+  notFollowedBy alphaNumChar
+  return kw
