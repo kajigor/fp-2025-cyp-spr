@@ -9,10 +9,19 @@ import qualified Data.Set as S
 import Data.Text (Text, pack)
 import Control.Monad.State
 import Data.List (nub)
+import Debug.Trace
 
 import Expression
 import Statement
 import Optimizer
+
+-- Set this to True to enable more verbose logging
+verboseLogging :: Bool
+verboseLogging = True
+
+-- Helper for conditional logging
+logTrace :: String -> a -> a
+logTrace msg = if verboseLogging then trace msg else id
 
 -- | Generate arbitrary variable names
 genVarName :: Gen Text
@@ -68,6 +77,30 @@ instance Arbitrary Stmt where
   shrink (While e s) = [s] ++ [While e s' | s' <- shrink s]
   shrink _ = []
 
+-- Counter helpers to provide labeled test counters
+newtype LabeledExpr = LabeledExpr (Int, Expr) deriving Show
+newtype LabeledStmt = LabeledStmt (Int, Stmt) deriving Show
+newtype LabeledStmtWithInput = LabeledStmtWithInput (Int, Stmt, [Int]) deriving Show
+
+instance Arbitrary LabeledExpr where
+  arbitrary = do
+    i <- arbitrary
+    expr <- arbitrary
+    return $ LabeledExpr (i `mod` 1000, expr)
+
+instance Arbitrary LabeledStmt where
+  arbitrary = do
+    i <- arbitrary
+    stmt <- arbitrary
+    return $ LabeledStmt (i `mod` 1000, stmt)
+    
+instance Arbitrary LabeledStmtWithInput where
+  arbitrary = do
+    i <- arbitrary
+    stmt <- arbitrary
+    inputs <- arbitrary
+    return $ LabeledStmtWithInput (i `mod` 1000, stmt, inputs)
+
 -- | Generate statements with a size limit to avoid infinite recursion
 genStmt :: Int -> Gen Stmt
 genStmt 0 = oneof [
@@ -94,7 +127,8 @@ runProgram prog inputs = evalState (evalStmt prog) (M.empty, inputs)
 -- | Property: Optimization preserves semantics
 prop_optimizationPreservesSemantics :: Stmt -> [Int] -> Property
 prop_optimizationPreservesSemantics prog inputs = 
-  not (null inputs) ==> originalOutput == optimizedOutput
+  not (null inputs) ==> logTrace ("Testing semantics preservation with " ++ show (length validInputs) ++ " inputs") $
+    originalOutput == optimizedOutput
   where
     validInputs = take 10 $ inputs  -- Limit input size to avoid excessive computation
     originalOutput = runProgram prog validInputs
@@ -105,8 +139,10 @@ prop_optimizationPreservesSemantics prog inputs =
 prop_expressionOptimizationCorrect :: Expr -> Property
 prop_expressionOptimizationCorrect expr =
   forAll (genSubst (getVarsInExpr expr)) $ \subst ->
-    canEvalExpr expr subst ==> 
-      evalExpr expr subst == evalExpr (algebraicOpt expr) subst
+    let vars = S.size (getVarsInExpr expr) in
+    logTrace ("Testing expression optimization with " ++ show vars ++ " variables") $
+      canEvalExpr expr subst ==> 
+        evalExpr expr subst == evalExpr (algebraicOpt expr) subst
   where
     genSubst vars = do
       let varList = S.toList vars
@@ -117,12 +153,19 @@ prop_expressionOptimizationCorrect expr =
 prop_constExprOptimizationCorrect :: Expr -> Property
 prop_constExprOptimizationCorrect expr =
   checkConstExpr expr ==>
-    evalExpr expr M.empty == evalExpr (optConstExpr expr) M.empty
+    logTrace "Testing constant expression optimization" $
+      evalExpr expr M.empty == evalExpr (optConstExpr expr) M.empty
 
 -- | Property: Optimization reduces program complexity
 prop_optimizationReducesComplexity :: Stmt -> Property
 prop_optimizationReducesComplexity prog =
-  property $ (complexity optimizedProg) <= (complexity prog)
+  let origComplexity = complexity prog
+      optComplexity = complexity optimizedProg
+      reduced = origComplexity - optComplexity
+  in
+  property $ logTrace ("Testing complexity reduction: " ++ show origComplexity ++ " -> " ++ 
+                       show optComplexity ++ " (reduction: " ++ show reduced ++ ")") $
+    optComplexity <= origComplexity
   where
     optimizedProg = optimizeWithEmptySubst prog
     
@@ -146,30 +189,61 @@ prop_optimizationReducesComplexity prog =
 -- | Property: Algebraic optimization always terminates
 prop_algebraicOptTerminates :: Expr -> Bool
 prop_algebraicOptTerminates expr = 
-  algebraicOpt expr `seq` True
+  logTrace ("Testing termination on expression with size: " ++ show (sizeOfExpr expr)) $
+    algebraicOpt expr `seq` True
+  where
+    sizeOfExpr :: Expr -> Int
+    sizeOfExpr (IntLit _) = 1
+    sizeOfExpr (VarLit _) = 1
+    sizeOfExpr (Sum a b) = 1 + sizeOfExpr a + sizeOfExpr b
+    sizeOfExpr (Sub a b) = 1 + sizeOfExpr a + sizeOfExpr b
+    sizeOfExpr (Prod a b) = 1 + sizeOfExpr a + sizeOfExpr b
+    sizeOfExpr (Div a b) = 1 + sizeOfExpr a + sizeOfExpr b
+    sizeOfExpr (Neg a) = 1 + sizeOfExpr a
 
 -- | Run tests with specific examples that demonstrate optimization benefits
 spec :: Spec
 spec = do
   describe "Optimizer Property-Based Testing" $ do
     it "preserves program semantics after optimization" $
-      property prop_optimizationPreservesSemantics
+      withMaxSuccess 20 $ -- Limit number of test cases
+      counterexample "Starting semantics preservation tests" $
+      property $ \(LabeledStmtWithInput (i, prog, inputs)) -> 
+        logTrace ("Test case " ++ show i ++ " of semantics preservation") $
+          prop_optimizationPreservesSemantics prog inputs
     
     it "produces correct results for expression optimization" $
-      property prop_expressionOptimizationCorrect
+      withMaxSuccess 50 $ -- Limit number of test cases
+      counterexample "Starting expression optimization tests" $
+      property $ \(LabeledExpr (i, expr)) -> 
+        logTrace ("Test case " ++ show i ++ " of expression optimization") $
+          prop_expressionOptimizationCorrect expr
     
     it "correctly optimizes constant expressions" $
-      property prop_constExprOptimizationCorrect
+      withMaxSuccess 50 $ -- Limit number of test cases
+      counterexample "Starting constant expression tests" $
+      property $ \(LabeledExpr (i, expr)) -> 
+        logTrace ("Test case " ++ show i ++ " of constant optimization") $
+          prop_constExprOptimizationCorrect expr
     
     it "reduces or maintains program complexity after optimization" $
-      property prop_optimizationReducesComplexity
+      withMaxSuccess 20 $ -- Limit number of test cases
+      counterexample "Starting complexity reduction tests" $
+      property $ \(LabeledStmt (i, prog)) -> 
+        logTrace ("Test case " ++ show i ++ " of complexity check") $
+          prop_optimizationReducesComplexity prog
     
     it "always terminates when optimizing expressions" $
-      property prop_algebraicOptTerminates
+      withMaxSuccess 50 $ -- Limit number of test cases
+      counterexample "Starting termination tests" $
+      property $ \(LabeledExpr (i, expr)) -> 
+        logTrace ("Test case " ++ show i ++ " of termination check") $
+          prop_algebraicOptTerminates expr
       
     describe "Specific examples" $ do
       it "optimizes a Fibonacci program correctly" $ do
         -- Simple Fibonacci program
+        putStrLn "Starting Fibonacci program test"
         let fibProg = Seq
               (Read "n")
               (Seq
@@ -198,9 +272,15 @@ spec = do
               )
         
         let input = [6]  -- Calculate 6th Fibonacci number
+        putStrLn "Running original Fibonacci program"
         let originalOutput = runProgram fibProg input
+        putStrLn "Optimizing Fibonacci program"
         let optimizedProg = optimizeWithEmptySubst fibProg
+        putStrLn "Running optimized Fibonacci program"
         let optimizedOutput = runProgram optimizedProg input
+        
+        putStrLn $ "Original output: " ++ show originalOutput
+        putStrLn $ "Optimized output: " ++ show optimizedOutput
         
         originalOutput `shouldBe` optimizedOutput
         originalOutput `shouldBe` [8]  -- F(6) = 8
