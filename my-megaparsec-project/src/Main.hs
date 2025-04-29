@@ -1,112 +1,111 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
 
 module Main (main) where
 
-import qualified Data.Text as T (Text, pack)
-import Text.Megaparsec
+import Options.Applicative
+import Control.Monad.State (evalState)
 import qualified Data.Map as M
-import Control.Monad.State
-import System.IO
-import System.Environment
-import qualified Control.Exception as E (try, evaluate, SomeException)
 
-import Expression
-import Statement
-import Optimizer
+import qualified Data.Text as T
+import Text.Megaparsec (runParser, errorBundlePretty)
+import System.IO (hPutStrLn, stderr)
+import System.Exit (exitFailure)
+import Control.Exception (try, SomeException)
 
--- | Helper function to safely evaluate expressions that might throw exceptions
-safeEval :: Expr -> Subst -> IO (Either String Int)
-safeEval expr subst = do
-  result <- E.try (E.evaluate (evalExpr expr subst)) :: IO (Either E.SomeException Int)
-  case result of
-    Left ex -> return $ Left $ "Error: " ++ show ex
-    Right val -> return $ Right val
+import Statement (Stmt, evalStmt, parseProgram, prettyPrintStmt)
+import Optimizer (optimizeWithEmptySubst)
 
--- | Demonstrate optimization of a specific expression
-demonstrateOptimization :: Expr -> Subst -> IO ()
-demonstrateOptimization expr subst = do
-  putStrLn "Original Expression:"
-  putStrLn $ prettyPrintExpr expr
-  
-  putStrLn "\nVariable Values:"
-  mapM_ (\(var, val) -> putStrLn $ show var ++ " = " ++ show val) (M.toList subst)
-  
-  -- Show the algebraic optimization
-  let algebraicOptimized = algebraicOpt expr
-  putStrLn "\nAfter Algebraic Optimization:"
-  putStrLn $ prettyPrintExpr algebraicOptimized
-  
-  -- Show the constant expression optimization
-  let constOptimized = optConstExpr expr
-  putStrLn "\nAfter Constant Expression Optimization:"
-  putStrLn $ prettyPrintExpr constOptimized
-  
-  -- Show combined optimization
-  let fullOptimized = algebraicOpt (optConstExpr expr)
-  putStrLn "\nAfter Combined Optimization:"
-  putStrLn $ prettyPrintExpr fullOptimized
-  
-  -- Try to evaluate the expressions
-  putStrLn "\nEvaluation Results:"
-  
-  putStr "Original: "
-  evalResult <- safeEval expr subst
-  putStrLn $ case evalResult of
-    Left err -> err
-    Right val -> show val
-  
-  putStr "Algebraic Optimized: "
-  algebraicResult <- safeEval algebraicOptimized subst
-  putStrLn $ case algebraicResult of
-    Left err -> err
-    Right val -> show val
-  
-  putStr "Const Optimized: "
-  constResult <- safeEval constOptimized subst
-  putStrLn $ case constResult of
-    Left err -> err
-    Right val -> show val
-  
-  putStr "Full Optimized: "
-  fullResult <- safeEval fullOptimized subst
-  putStrLn $ case fullResult of
-    Left err -> err
-    Right val -> show val
+when :: Bool -> IO () -> IO ()
+when condition action = if condition then action else return ()
+
+data Options = Options
+  { programText :: String  -- The program source code
+  , programArgs :: [Int]   -- Input arguments
+  , optimize    :: Bool    -- Whether to optimize the program
+  , verbose     :: Bool    -- Whether to print verbose output
+  }
+
+argsParser :: Parser [Int]
+argsParser = option (str >>= readIntList)
+  ( long "args"
+  <> short 'a'
+  <> metavar "ARGS"
+  <> value []
+  <> help "Comma-separated list of integer arguments for the program"
+  )
+  where
+    readIntList :: String -> ReadM [Int]
+    readIntList "" = return []
+    readIntList s =
+      case reads ("[" ++ s ++ "]") of
+        [(xs, "")] -> return xs
+        _          -> readerError "Invalid argument format. Use comma-separated integers."
+
+optionsParser :: Parser Options
+optionsParser = Options
+  <$> argument str
+      ( metavar "PROGRAM"
+      <> help "Program to parse and run"
+      )
+  <*> argsParser
+  <*> switch
+      ( long "optimize"
+      <> short 'o'
+      <> help "Optimize the program before execution"
+      )
+  <*> switch
+      ( long "verbose"
+      <> short 'v'
+      <> help "Print verbose output including the parsed AST"
+      )
+
+parseInputProgram :: String -> IO Stmt
+parseInputProgram input = do
+  case runParser parseProgram "" (T.pack input) of
+    Left err -> do
+      hPutStrLn stderr $ "Parse error: " ++ errorBundlePretty err
+      exitFailure
+    Right stmt -> return stmt
+
+formatOutput :: [Int] -> String
+formatOutput [] = "No output"
+formatOutput [x] = "Output: " ++ show x
+formatOutput xs = "Output: " ++ show xs
+
+runProgram :: Stmt -> [Int] -> IO [Int]
+runProgram stmt args = do
+  return $ evalState (evalStmt stmt) (M.empty, args)
 
 main :: IO ()
-main = do
-  putStrLn "Expression Optimization Demo"
-  putStrLn "----------------------------\n"
+main = execParser opts >>= run
+  where
+    opts = info (optionsParser <**> helper)
+      ( fullDesc
+     <> progDesc "Parse and execute programs in the statement language"
+     <> header "parse - Statement parser and interpreter" )
+
+run :: Options -> IO ()
+run opts = do
+  program <- parseInputProgram (programText opts)
   
-  -- The expression from the failing test: Div (IntLit 0) (Div (Neg (VarLit "e")) (VarLit "y"))
-  -- with variables e = 9 and y = -32
-  let failingExpr = Div (IntLit 0) (Div (Neg (VarLit "e")) (VarLit "y"))
-  let varSubst = M.fromList [("e", 9), ("y", -32)]
+  when (verbose opts) $ do
+    putStrLn "Parsed program:"
+    putStrLn $ prettyPrintStmt program
+    putStrLn ""
   
-  demonstrateOptimization failingExpr varSubst
+  let finalProgram = if optimize opts
+                     then optimizeWithEmptySubst program
+                     else program
   
-  putStrLn "\n=============================================\n"
+  when (optimize opts && verbose opts) $ do
+    putStrLn "Optimized program:"
+    putStrLn $ prettyPrintStmt finalProgram
+    putStrLn ""
   
-  -- The complex failing test case from property test
-  putStrLn "Testing complex division expression that failed in property tests:"
-  let complexFailingExpr = Div (IntLit 48) (Sub (Div (Sum (IntLit 96) (IntLit (-96))) (Div (IntLit (-5)) (VarLit "g"))) (IntLit 100))
-  let complexSubst = M.fromList [("g", -82)]
-  
---  demonstrateOptimization complexFailingExpr complexSubst
-
-  putStrLn "Another complex division expression that failed in property tests:"
-  let complexFailingExpr =  Prod (Div (IntLit 27) (Div (Neg (IntLit (-23))) (Prod (VarLit "i") (IntLit 88)))) (Prod (Div (Neg (Div (IntLit 76) (IntLit (-99)))) (IntLit 20)) (VarLit "c"))
-  let complexSubst = M.fromList [("c",-67),("i",8)]
-
---  demonstrateOptimization complexFailingExpr complexSubst
-
-  putStrLn "Another complex division expression that failed in property tests:"
-  let complexFailingExpr =   Sum (Div (IntLit (-65)) (Div (IntLit 63) (IntLit 96))) (VarLit "j")
-  let complexSubst = M.fromList []
-
-  demonstrateOptimization complexFailingExpr complexSubst
-  
-  putStrLn "\nDone!"
-
-
-
+  result <- try (runProgram finalProgram (programArgs opts)) :: IO (Either SomeException [Int])
+  case result of
+    Left err -> do
+      hPutStrLn stderr $ "Runtime error: " ++ show err
+      exitFailure
+    Right output -> putStrLn $ formatOutput output
