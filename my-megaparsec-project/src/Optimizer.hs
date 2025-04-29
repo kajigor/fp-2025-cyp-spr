@@ -8,6 +8,8 @@ module Optimizer
   , optStmt
   , modifiedVars
   , optimizeWithEmptySubst
+  , getVarsInExpr
+  , canEvalExpr
   ) where
 
 import qualified Data.Map as M

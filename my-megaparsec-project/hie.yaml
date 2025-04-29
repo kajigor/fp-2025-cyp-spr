@@ -26,3 +26,6 @@ cradle:
       
     - path: "./test/OptimizerSpec.hs"
       component: "my-megaparsec-project:test:my-megaparsec-project-test"
+      
+    - path: "./test/OptimizerPropertySpec.hs"
+      component: "my-megaparsec-project:test:my-megaparsec-project-test"
