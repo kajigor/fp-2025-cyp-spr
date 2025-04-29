@@ -1,0 +1,101 @@
+cabal-version:       2.2
+
+name:                my-megaparsec-project
+version:             0.1.0.0
+description:         Megaparsec project for Haskell FP course
+homepage:            https://github.com/githubuser/my-megaparsec-project#readme
+license:             BSD-3-Clause
+license-file:        LICENSE
+author:              Author name here
+maintainer:          example@example.com
+copyright:           2025 Author name here
+category:            Web
+build-type:          Simple
+extra-source-files:  README.md
+                     CHANGELOG.md
+
+library
+  exposed-modules:
+      Expression
+      Optimizer
+      Parser
+      Statement
+  other-modules:
+      Paths_my_megaparsec_project
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , megaparsec
+    , mtl
+    , text
+  default-language: Haskell2010
+
+-- Remove the executable my-megaparsec-project-exe since it doesn't exist
+-- executable my-megaparsec-project-exe
+--  main-is: Main.hs
+--  other-modules:
+--      Paths_my_megaparsec_project
+--  hs-source-dirs:
+--      app
+--  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+--  build-depends:
+--      base >=4.7 && <5
+--    , containers
+--    , megaparsec
+--    , mtl
+--    , my-megaparsec-project
+--    , text
+--  default-language: Haskell2010
+
+test-suite my-megaparsec-project-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      ExpressionSpec
+      OptimizerSpec
+      OptimizerPropertySpec
+      StatementParserSpec
+      Paths_my_megaparsec_project
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , hspec
+    , hspec-megaparsec
+    , megaparsec
+    , mtl
+    , my-megaparsec-project
+    , QuickCheck
+    , text
+  default-language: Haskell2010
+
+executable my-megaparsec-project
+  hs-source-dirs:      src
+  main-is:             Main.hs
+  other-modules:       Expression
+                     , Optimizer
+                     , Statement
+                     , Parser
+  default-language:    Haskell2010
+  build-depends:
+      base >= 4.7 && < 5
+    , megaparsec
+    , text
+    , containers
+    , mtl
+    , optparse-applicative
+    , directory
+  ghc-options:         -Wall
+                       -Wcompat
+                       -Widentities
+                       -Wincomplete-record-updates
+                       -Wincomplete-uni-patterns
+                       -Wmissing-export-lists
+                       -Wmissing-home-modules
+                       -Wpartial-fields
+                       -Wredundant-constraints

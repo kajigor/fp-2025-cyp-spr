@@ -1,0 +1,14 @@
+n = readInt();
+a = 0;
+b = 1;
+i = 0;
+print(a);
+print(b);
+i = 2;
+while (n - i) {
+    next = a + b;
+    print(next);
+    a = b;
+    b = next;
+    i = i + 1;
+};

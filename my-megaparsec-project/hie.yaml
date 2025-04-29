@@ -1,0 +1,31 @@
+cradle:
+  stack:
+    - path: "./src/Main.hs"
+      component: "my-megaparsec-project:exe:my-megaparsec-project"
+
+    - path: "./src/Expression.hs"
+      component: "my-megaparsec-project:lib:my-megaparsec-project"
+
+    - path: "./src/Optimizer.hs"
+      component: "my-megaparsec-project:lib:my-megaparsec-project"
+
+    - path: "./src/Parser.hs"
+      component: "my-megaparsec-project:lib:my-megaparsec-project"
+
+    - path: "./src/Statement.hs"
+      component: "my-megaparsec-project:lib:my-megaparsec-project"
+
+    - path: "./test/Spec.hs"
+      component: "my-megaparsec-project:test:my-megaparsec-project-test"
+
+    - path: "./test/StatementParserSpec.hs"
+      component: "my-megaparsec-project:test:my-megaparsec-project-test"
+      
+    - path: "./test/ExpressionSpec.hs"
+      component: "my-megaparsec-project:test:my-megaparsec-project-test"
+      
+    - path: "./test/OptimizerSpec.hs"
+      component: "my-megaparsec-project:test:my-megaparsec-project-test"
+      
+    - path: "./test/OptimizerPropertySpec.hs"
+      component: "my-megaparsec-project:test:my-megaparsec-project-test"

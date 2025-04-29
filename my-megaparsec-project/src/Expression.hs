@@ -1,0 +1,95 @@
+{-# LANGUAGE OverloadedStrings #-}
+
+module Expression
+  ( Expr(..)
+  , evalExpr
+  , prettyPrintExpr
+  , prettyPrintParen
+  , parseExpr
+  , parseTerm
+  , parseFactor
+  , parseParens
+  , parseNegative
+  , parseInt
+  , parseVarLit
+  , Subst
+  ) where
+
+import Data.Text (Text)
+import Text.Megaparsec
+import Text.Megaparsec.Char
+import qualified Data.Map as M
+
+import Parser
+
+type Subst = M.Map Text Int
+
+data Expr
+  = IntLit Int
+  | VarLit Text
+  | Sum Expr Expr
+  | Sub Expr Expr
+  | Prod Expr Expr
+  | Div Expr Expr
+  | Neg Expr
+  deriving (Eq, Show)
+
+evalExpr :: Expr -> Subst -> Int
+evalExpr (IntLit n) _ = n
+evalExpr (VarLit var) state = state M.! var
+evalExpr (Sum a b) state = evalExpr a state + evalExpr b state
+evalExpr (Sub a b) state = evalExpr a state - evalExpr b state
+evalExpr (Prod a b) state = evalExpr a state * evalExpr b state
+evalExpr (Div a b) state = evalExpr a state `div` evalExpr b state
+evalExpr (Neg a) state = -(evalExpr a) state
+
+prettyPrintExpr :: Expr -> String
+prettyPrintExpr (IntLit n) = show n
+prettyPrintExpr (VarLit var) = show var
+prettyPrintExpr (Sum a b)  = prettyPrintExpr a ++ " + " ++ prettyPrintExpr b
+prettyPrintExpr (Sub a b)  = prettyPrintExpr a ++ " - " ++ prettyPrintParen b
+prettyPrintExpr (Prod a b) = prettyPrintParen a ++ " * " ++ prettyPrintParen b
+prettyPrintExpr (Div a b)  = prettyPrintParen a ++ " / " ++ prettyPrintParen b
+prettyPrintExpr (Neg a) = "-" ++ prettyPrintExpr a
+
+prettyPrintParen :: Expr -> String
+prettyPrintParen e = case e of
+  IntLit _ -> prettyPrintExpr e
+  _        -> "(" ++ prettyPrintExpr e ++ ")"
+
+parseInt :: Parser Expr
+parseInt = IntLit <$> integer
+
+parseVarLit :: Parser Expr
+parseVarLit = VarLit <$> identifier
+
+parseNegative :: Parser Expr
+parseNegative = do
+  _ <- symbol '-'
+  Neg <$> (parseInt <|> parseExpr)
+
+parseParens :: Parser Expr
+parseParens = parens parseExpr
+
+parseFactor :: Parser Expr
+parseFactor = parseInt <|> parseVarLit <|> parseNegative <|> parseParens
+
+-- parseTerm = chain of factors, split by * or /
+parseTerm :: Parser Expr
+parseTerm = do
+  first <- parseFactor
+  rest <- many $ do
+    op <- (symbol '*' >> return Prod) <|> (symbol '/' >> return Div)
+    expr <- parseFactor
+    return (op, expr)
+  return $ foldl (\acc (op, x) -> op acc x) first rest
+
+-- parseExpr = chain of Terms, split by + or -
+parseExpr :: Parser Expr
+parseExpr = do
+  first <- parseTerm
+  rest <- many $ do
+    op <- (symbol '+' >> return Sum) <|> (symbol '-' >> return Sub)
+    expr <- parseTerm
+    return (op, expr)
+  return $ foldl (\acc (op, x) -> op acc x) first rest
