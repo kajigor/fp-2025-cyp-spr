@@ -23,3 +23,6 @@ cradle:
       
     - path: "./test/ExpressionSpec.hs"
       component: "my-megaparsec-project:test:my-megaparsec-project-test"
+      
+    - path: "./test/OptimizerSpec.hs"
+      component: "my-megaparsec-project:test:my-megaparsec-project-test"

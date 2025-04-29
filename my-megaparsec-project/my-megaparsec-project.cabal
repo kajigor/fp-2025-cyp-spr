@@ -55,6 +55,7 @@ test-suite my-megaparsec-project-test
   main-is: Spec.hs
   other-modules:
       ExpressionSpec
+      OptimizerSpec
       StatementParserSpec
       Paths_my_megaparsec_project
   hs-source-dirs:

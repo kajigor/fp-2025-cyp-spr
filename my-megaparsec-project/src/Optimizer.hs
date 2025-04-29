@@ -48,27 +48,46 @@ algebraicOpt expr = case expr of
   IntLit n -> IntLit n
   VarLit v -> VarLit v
 
-  Sum (IntLit 0) b -> algebraicOpt b         -- 0 + b = b
-  Sum a (IntLit 0) -> algebraicOpt a         -- a + 0 = a
-  Sum a b -> Sum (algebraicOpt a) (algebraicOpt b)
+  Sum a b -> 
+    let a' = algebraicOpt a
+        b' = algebraicOpt b
+    in case (a', b') of
+        (IntLit 0, _) -> b'               -- 0 + b = b
+        (_, IntLit 0) -> a'               -- a + 0 = a
+        _ -> Sum a' b'
   
-  Sub a (IntLit 0) -> algebraicOpt a         -- a - 0 = a
-  Sub (IntLit 0) b -> Neg (algebraicOpt b)   -- 0 - b = -b
-  Sub a b -> Sub (algebraicOpt a) (algebraicOpt b)
+  Sub a b -> 
+    let a' = algebraicOpt a
+        b' = algebraicOpt b
+    in case (a', b') of
+        (_, IntLit 0) -> a'               -- a - 0 = a
+        (IntLit 0, _) -> Neg b'           -- 0 - b = -b
+        _ -> Sub a' b'
   
-  Prod (IntLit 0) _ -> IntLit 0              -- 0 * b = 0
-  Prod _ (IntLit 0) -> IntLit 0              -- a * 0 = 0
-  Prod (IntLit 1) b -> algebraicOpt b        -- 1 * b = b
-  Prod a (IntLit 1) -> algebraicOpt a        -- a * 1 = a
-  Prod a b -> Prod (algebraicOpt a) (algebraicOpt b)
+  Prod a b -> 
+    let a' = algebraicOpt a
+        b' = algebraicOpt b
+    in case (a', b') of
+        (IntLit 0, _) -> IntLit 0         -- 0 * b = 0
+        (_, IntLit 0) -> IntLit 0         -- a * 0 = 0
+        (IntLit 1, _) -> b'               -- 1 * b = b
+        (_, IntLit 1) -> a'               -- a * 1 = a
+        _ -> Prod a' b'
   
-  Div (IntLit 0) _ -> IntLit 0               -- 0 / b = 0 (assuming b != 0)
-  Div a (IntLit 1) -> algebraicOpt a         -- a / 1 = a
-  Div a b -> Div (algebraicOpt a) (algebraicOpt b)
+  Div a b -> 
+    let a' = algebraicOpt a
+        b' = algebraicOpt b
+    in case (a', b') of
+        (IntLit 0, _) -> IntLit 0         -- 0 / b = 0 (assuming b != 0)
+        (_, IntLit 1) -> a'               -- a / 1 = a
+        _ -> Div a' b'
   
-  Neg (Neg a) -> algebraicOpt a              -- -(-a) = a
-  Neg (IntLit 0) -> IntLit 0                 -- -0 = 0
-  Neg a -> Neg (algebraicOpt a)
+  Neg a -> 
+    let a' = algebraicOpt a
+    in case a' of
+        Neg b -> b                        -- -(-a) = a
+        IntLit 0 -> IntLit 0              -- -0 = 0
+        _ -> Neg a'
 
 -- | Collects all variables used in an expression
 getVarsInExpr :: Expr -> S.Set Text
@@ -164,4 +183,8 @@ optimizeStatementWithSubst stmt subst = fst $ optStmt stmt subst
 
 -- | Optimizes a statement using an empty substitution map
 optimizeStmt :: Stmt -> Stmt
-optimizeStmt stmt = optimizeStatement stmt M.empty
+optimizeStmt stmt = optimizeWithEmptySubst stmt
+
+-- | Optimizes a statement with an empty substitution map
+optimizeWithEmptySubst :: Stmt -> Stmt
+optimizeWithEmptySubst stmt = fst $ optStmt stmt M.empty
