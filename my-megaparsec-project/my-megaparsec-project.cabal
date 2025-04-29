@@ -89,6 +89,7 @@ executable my-megaparsec-project
     , containers
     , mtl
     , optparse-applicative
+    , directory
   ghc-options:         -Wall
                        -Wcompat
                        -Widentities
