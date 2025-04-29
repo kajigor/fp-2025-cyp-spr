@@ -125,7 +125,6 @@ compareExprResults originalResult optimizedResult context = case (originalResult
         return False
 
 -- | Property: Optimized expressions evaluate to the same value as the original
--- Also ensures division by zero exceptions are properly handled
 prop_expressionOptimizationCorrect :: Expr -> Property
 prop_expressionOptimizationCorrect expr =
   forAll (genSubst (getVarsInExpr expr)) $ \subst ->
@@ -133,14 +132,9 @@ prop_expressionOptimizationCorrect expr =
     logTrace ("Testing expression optimization with " ++ show vars ++ " variables") $
       canEvalExpr expr subst ==>
         monadicIO $ do
-          -- Try to evaluate the original expression
           res1 <- run $ try (evaluate (evalExpr expr subst)) :: PropertyM IO (Either SomeException Int)
-          
-          -- Try to evaluate the optimized expression
           let optimized = algebraicOpt expr
           res2 <- run $ try (evaluate (evalExpr optimized subst)) :: PropertyM IO (Either SomeException Int)
-          
-          -- Compare results
           result <- compareExprResults res1 res2 "algebraic optimization"
           assert result
 
@@ -149,14 +143,9 @@ prop_constExprOptimizationCorrect :: Expr -> Property
 prop_constExprOptimizationCorrect expr =
   logTrace "Testing constant expression optimization" $
     monadicIO $ do
-      -- Try to evaluate the original expression
       res1 <- run $ try (evaluate (evalExpr expr M.empty)) :: PropertyM IO (Either SomeException Int)
-      
-      -- Try to evaluate the optimized expression
       let optimized = optConstExpr expr
       res2 <- run $ try (evaluate (evalExpr optimized M.empty)) :: PropertyM IO (Either SomeException Int)
-      
-      -- Compare results
       result <- compareExprResults res1 res2 "constant expression optimization"
       assert result
 
