@@ -12,9 +12,17 @@ import Control.Monad.State
 import qualified Data.Map as M
 import Control.Applicative ((<|>))
 import Text.Megaparsec (many, try)
+import Control.Exception (throw, Exception)
+import Data.Typeable (Typeable)
 
 import Parser
 import Expression (Expr, Subst, evalExpr, prettyPrintExpr, parseExpr)
+
+
+data IllegalArgumentException = IllegalArgumentException String
+  deriving (Show, Typeable)
+
+instance Exception IllegalArgumentException
 
 data Stmt
   = Assign Text Expr
@@ -50,13 +58,16 @@ evalStmt (Read var) = do
 
 evalStmt (While cond body) = do
   (subst, input) <- get
-  if evalExpr cond subst == 0
-    then return []
-    else do
-      put (subst, input)
-      out1 <- evalStmt body
-      out2 <- evalStmt (While cond body)
-      return (out1 ++ out2)
+  let condVal = evalExpr cond subst
+  if condVal < 0
+    then throw (IllegalArgumentException "While condition evaluated to negative value")
+    else if condVal == 0
+      then return []
+      else do
+        put (subst, input)
+        out1 <- evalStmt body
+        out2 <- evalStmt (While cond body)
+        return (out1 ++ out2)
 
 prettyPrintStmt :: Stmt -> String
 prettyPrintStmt (Assign var e) = show var ++ " = " ++ prettyPrintExpr e ++ ";"
