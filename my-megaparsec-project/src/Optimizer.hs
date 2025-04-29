@@ -27,7 +27,7 @@ checkConstExpr (VarLit _) = False
 checkConstExpr (Sum a b) = checkConstExpr a && checkConstExpr b
 checkConstExpr (Sub a b) = checkConstExpr a && checkConstExpr b
 checkConstExpr (Prod a b) = checkConstExpr a && checkConstExpr b
-checkConstExpr (Div a b) = checkConstExpr a && checkConstExpr b
+checkConstExpr (Div a b) = checkConstExpr a && checkConstExpr b && (b /= IntLit 0)
 checkConstExpr (Neg a) = checkConstExpr a
 
 -- | Optimizes a constant expression by evaluating it at compile time
@@ -45,12 +45,12 @@ optConstExpr expr
 
 -- | Applies algebraic optimizations
 algebraicOpt :: Expr -> Expr
-algebraicOpt expr = case expr of
+algebraicOpt expr = case (optConstExpr expr) of
   -- Handle basic expressions
   IntLit n -> IntLit n
   VarLit v -> VarLit v
 
-  Sum a b -> 
+  Sum a b ->
     let a' = algebraicOpt a
         b' = algebraicOpt b
     in case (a', b') of
