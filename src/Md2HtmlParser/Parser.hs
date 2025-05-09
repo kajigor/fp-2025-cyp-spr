@@ -13,11 +13,35 @@ module Md2HtmlParser.Parser
   )
 where
 
+import Data.Char (isDigit)
 import Data.Text (Text)
+import qualified Data.Text as T
 import qualified Data.Text as Text
-import Md2HtmlParser.Parser.Utils (Parser, betweenChars, endOfLine, notSpecialChar, parens, square, symbol, takeRestOfLine, takeUntilSpecialOrNewline, textString)
-import Text.Megaparsec (ParseErrorBundle, choice, many, takeWhileP, try, (<|>), some)
-import Text.Megaparsec.Char (char)
+import Md2HtmlParser.Parser.Utils
+  ( Parser,
+    endOfLine,
+    indented,
+    manyTill1,
+    parens,
+    square,
+    symbol,
+    takeUntilSpecialOrNewline,
+    textString,
+  )
+import Text.Megaparsec
+  ( anySingle,
+    choice,
+    eof,
+    many,
+    optional,
+    some,
+    takeWhileP,
+    try,
+    (<|>),
+    (<?>),
+    satisfy,
+  )
+import Text.Megaparsec.Char (char, string)
 
 -- | Represents a markdown document
 newtype MarkdownDoc = MarkdownDoc [MarkdownElement]
@@ -40,7 +64,7 @@ data MarkdownElement
     Header Int [InlineElement]
   | -- | Paragraph of text
     Paragraph [InlineElement]
-  | CodeBlock Text
+  | CodeBlock (Maybe Text) Text
   | -- | Bulleted list of items with potential formatting
     BulletList [[InlineElement]]
   | -- | Numbered list of items with potential formatting
@@ -52,21 +76,20 @@ data MarkdownElement
   deriving (Show, Eq)
 
 parsePlainText :: Parser InlineElement
-parsePlainText = do
-  PlainText <$> takeUntilSpecialOrNewline
+parsePlainText = PlainText <$> takeUntilSpecialOrNewline
 
 parseItalic :: Parser InlineElement
 parseItalic = do
   start <- try (textString "_") <|> try (textString "*")
   content <- try (some parseInlineElement)
-  _ <- (textString (Text.unpack start))
+  _ <- textString (Text.unpack start)
   return $ ItalicText content
 
 parseBold :: Parser InlineElement
 parseBold = do
   start <- try (textString "__") <|> try (textString "**")
   content <- try (some parseInlineElement)
-  _ <- (textString (Text.unpack start))
+  _ <- textString (Text.unpack start)
   return $ BoldText content
 
 parseCodeText :: Parser InlineElement
@@ -101,8 +124,96 @@ parseInlineElement =
     ]
 
 parseMdHeader :: Parser MarkdownElement
+parseMdHeader = do
+  level <- length <$> some (symbol '#')
+  content <- many parseInlineElement
+  _ <- (endOfLine *> pure ()) <|> eof
+  return $ Header level content
 
+parseParagraph :: Parser MarkdownElement
+parseParagraph = do
+  content <- some parseInlineElement
+  _ <- endOfLine
+  _ <- (endOfLine *> pure ()) <|> eof
+  return $ Paragraph content
+
+parseCodeBlock :: Parser MarkdownElement
+parseCodeBlock = do
+  _ <- string (Text.pack "```")
+  lang <- optional $ takeWhileP (Just "language") (/= '\n')
+  _ <- endOfLine
+  content <-
+    manyTill1
+      anySingle
+      ( try $ do
+          _ <- endOfLine
+          _ <- string (Text.pack "```")
+          return ()
+      )
+  _ <- (endOfLine *> pure ()) <|> eof
+  return $ CodeBlock (T.stripEnd <$> lang) (T.pack content)
+
+parseBulletListInlineElem :: Parser [InlineElement]
+parseBulletListInlineElem = do
+  _ <- (char '*' <?> "* point") <|> (char '-' <?> "- point")
+  _ <- char ' ' <?> "space"
+  contentHead <- parseInlineElement
+  contentTail <-
+    many
+      ( try $ do
+          _ <- endOfLine
+          parseInlineElement
+      )
+  return (contentHead : contentTail)
+
+parseBulletList :: Parser MarkdownElement
+parseBulletList = do
+  level <- length <$> many (char ' ')
+  firstItem <- parseBulletListInlineElem
+  restItems <- many $ try $ do
+    _ <- endOfLine
+    indented level parseBulletListInlineElem
+  return $ BulletList (firstItem : restItems)
+
+parseNumberedListInlineElem :: Parser [InlineElement]
+parseNumberedListInlineElem = do
+  _ <- some (satisfy isDigit) <?> "digit"
+  _ <- char '.' <?> "period"
+  _ <- char ' ' <?> "space"
+
+  contentHead <- parseInlineElement
+  contentTail <-
+    many
+      ( try $ do
+          _ <- endOfLine
+          parseInlineElement
+      )
+  return (contentHead : contentTail)
+
+parseNumberedList :: Parser MarkdownElement
+parseNumberedList = do
+  level <- length <$> many (char ' ')
+  firstItem <- parseNumberedListInlineElem
+  restItems <- many $ try $ do
+    _ <- endOfLine
+    indented level parseNumberedListInlineElem
+  return $ NumberedList (firstItem : restItems)
+
+parseHorizontalRule :: Parser MarkdownElement
+parseHorizontalRule = HorizontalRule <$ try (symbol '-' >> symbol '-' >> symbol '-' >> endOfLine)
+
+parseEmptyLine :: Parser MarkdownElement
+parseEmptyLine = EmptyLine <$ endOfLine
 
 -- | Parse markdown text into a MarkdownDoc structure
 parseMarkdownElement :: Parser MarkdownElement
-parseMarkdownElement = undefined
+parseMarkdownElement =
+  choice
+    [ parseMdHeader,
+      parseCodeBlock,
+      try parseBulletList,
+      try parseNumberedList,
+      parseParagraph,
+      parseHorizontalRule,
+      parseEmptyLine
+    ]

@@ -28,6 +28,7 @@ module Md2HtmlParser.Parser.Utils
     takeUntilSpecialOrNewline,
     betweenChars,
     textString,
+    indented,
   )
 where
 
@@ -149,8 +150,16 @@ nonIndentedLine = takeWhileP1 (/= '\n') <* (endOfLine) <?> "non-indented line"
 -- | Parse a line with a specific indentation level
 indentedLine :: Int -> Parser Text
 indentedLine n = try $ do
-  count n (char ' ' <?> "space")
+  _ <- count n (char ' ' <?> "space")
   takeWhileP1 (/= '\n') <* (endOfLine) <?> ("line with " ++ show n ++ " spaces indentation")
+
+-- | Parse a line with a specific indentation level by the provided parser
+indented :: Int -> Parser a -> Parser a
+indented n parser = try $ do
+  _ <- count n (char ' ' <?> "space") <|> count n (char '\t' <?> "tab")
+  res <- parser
+  _ <- endOfLine
+  return res
 
 -- | Take the rest of the line until newline or end of input
 takeRestOfLine :: Parser Text
