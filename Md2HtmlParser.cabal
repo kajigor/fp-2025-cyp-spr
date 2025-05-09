@@ -74,6 +74,7 @@ test-suite Md2HtmlParser-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      InlineElementSpec
       Paths_Md2HtmlParser
   autogen-modules:
       Paths_Md2HtmlParser

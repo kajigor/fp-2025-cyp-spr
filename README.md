@@ -8,7 +8,7 @@
    - headings
    - lists
    - links
-   - emphasis
+   - ___emphasis___
    - code blocks
  - (20 points) HTML renderer for the parsed AST.
  - (15 points) Support for nested structures and inline formatting.

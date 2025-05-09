@@ -178,7 +178,7 @@ withManyTill p end f = f <$> manyTill p end
 
 -- | Check if a character is a special Markdown character
 isSpecialChar :: Char -> Bool
-isSpecialChar c = c `elem` ("*_`[]()!#>+-.|" :: String)
+isSpecialChar c = c `elem` ("*_`[]()!#>+-|" :: String)
 
 -- | Check if a character is not a special Markdown character
 notSpecialChar :: Char -> Bool

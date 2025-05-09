@@ -4,13 +4,19 @@ module Md2HtmlParser.Parser
     MarkdownElement (..),
     InlineElement (..),
     parseInlineElement,
+    parseImageText,
+    parseCodeText,
+    parseLinkText,
+    parsePlainText,
+    parseBold,
+    parseItalic,
   )
 where
 
 import Data.Text (Text)
 import qualified Data.Text as Text
 import Md2HtmlParser.Parser.Utils (Parser, betweenChars, endOfLine, notSpecialChar, parens, square, symbol, takeRestOfLine, takeUntilSpecialOrNewline, textString)
-import Text.Megaparsec (ParseErrorBundle, choice, many, takeWhileP, try, (<|>))
+import Text.Megaparsec (ParseErrorBundle, choice, many, takeWhileP, try, (<|>), some)
 import Text.Megaparsec.Char (char)
 
 -- | Represents a markdown document
@@ -51,16 +57,16 @@ parsePlainText = do
 
 parseItalic :: Parser InlineElement
 parseItalic = do
-  start <- try (textString "_") <|> textString "*"
-  content <- many parseInlineElement
-  _ <- textString (Text.unpack start)
+  start <- try (textString "_") <|> try (textString "*")
+  content <- try (some parseInlineElement)
+  _ <- (textString (Text.unpack start))
   return $ ItalicText content
 
 parseBold :: Parser InlineElement
 parseBold = do
-  start <- try (textString "__") <|> textString "**"
-  content <- many parseInlineElement
-  _ <- textString (Text.unpack start)
+  start <- try (textString "__") <|> try (textString "**")
+  content <- try (some parseInlineElement)
+  _ <- (textString (Text.unpack start))
   return $ BoldText content
 
 parseCodeText :: Parser InlineElement
@@ -88,8 +94,9 @@ parseInlineElement =
   choice
     [ parseImageText,
       parseLinkText,
-      parseCodeText,
-      try parseBold <|> parseItalic,
+      try parseCodeText,
+      try parseBold,
+      try parseItalic,
       parsePlainText
     ]
 
