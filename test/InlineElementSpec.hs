@@ -5,10 +5,9 @@ module InlineElementSpec (spec) where
 
 import Test.Hspec
 import qualified Data.Text as T
-import Text.Megaparsec (parse, errorBundlePretty, eof)
+import Text.Megaparsec (parse, eof)
 import Md2HtmlParser.Parser
 import Md2HtmlParser.Parser.Utils (Parser)
-import Data.Void (Void)
 
 -- Helper to handle parsing results and throw proper test failures
 parseMdOrFail :: Parser a -> T.Text -> IO a
@@ -25,7 +24,7 @@ shouldFailToParse parser input =
       "Expected parsing to fail, but succeeded with result: " ++ show result
     Left _ -> return () -- Error is expected, so test passes
 
-shouldParsePartially :: Show a => Parser a -> T.Text -> Expectation
+shouldParsePartially :: Parser a -> T.Text -> Expectation
 shouldParsePartially parser input =
   case parse parser "" input of
     Right _ -> do

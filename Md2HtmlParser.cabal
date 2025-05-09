@@ -75,6 +75,7 @@ test-suite Md2HtmlParser-test
   main-is: Spec.hs
   other-modules:
       InlineElementSpec
+      MarkdownDocSpec
       Paths_Md2HtmlParser
   autogen-modules:
       Paths_Md2HtmlParser

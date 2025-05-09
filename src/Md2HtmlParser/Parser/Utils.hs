@@ -145,25 +145,23 @@ optionalBlankLines = do
 
 -- | Parse a line that is not indented
 nonIndentedLine :: Parser Text
-nonIndentedLine = takeWhileP1 (/= '\n') <* (endOfLine) <?> "non-indented line"
+nonIndentedLine = takeWhileP1 (/= '\n') <* endOfLine <?> "non-indented line"
 
 -- | Parse a line with a specific indentation level
 indentedLine :: Int -> Parser Text
 indentedLine n = try $ do
   _ <- count n (char ' ' <?> "space")
-  takeWhileP1 (/= '\n') <* (endOfLine) <?> ("line with " ++ show n ++ " spaces indentation")
+  takeWhileP1 (/= '\n') <* endOfLine <?> ("line with " ++ show n ++ " spaces indentation")
 
 -- | Parse a line with a specific indentation level by the provided parser
 indented :: Int -> Parser a -> Parser a
 indented n parser = try $ do
   _ <- count n (char ' ' <?> "space") <|> count n (char '\t' <?> "tab")
-  res <- parser
-  _ <- endOfLine
-  return res
+  parser
 
 -- | Take the rest of the line until newline or end of input
 takeRestOfLine :: Parser Text
-takeRestOfLine = takeWhileP (Just "rest of line") (/= '\n') <* (endOfLine) <?> "rest of line"
+takeRestOfLine = takeWhileP (Just "rest of line") (/= '\n') <* endOfLine <?> "rest of line"
 
 -- | Like manyTill but requires at least one occurrence
 manyTill1 :: Parser a -> Parser end -> Parser [a]
