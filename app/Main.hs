@@ -1,7 +1,7 @@
 module Main (main) where
 
 import Md2HtmlParser.CLI (parseOptions, run)
-import Md2HtmlParser.Parser (InlineElement (..), MarkdownDoc (..), MarkdownElement (..), parseBold, parseCodeText, parseImageText, parseInlineElement, parseItalic, parseLinkText, parseMarkdown, parsePlainText)
+import Md2HtmlParser.Parser (InlineElement (..), MarkdownDoc (..), MarkdownElement (..), parseBold, parseCodeText, parseImageText, parseInlineElement, parseItalic, parseLinkText, parseMarkdownElement, parsePlainText)
 import qualified Data.Text as T
 import Text.Megaparsec (parse)
 import System.IO (hSetEncoding, stdout, utf8)

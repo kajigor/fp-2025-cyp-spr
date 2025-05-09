@@ -1,5 +1,5 @@
 module Md2HtmlParser.Parser
-  ( parseMarkdown,
+  ( parseMarkdownElement,
     MarkdownDoc (..),
     MarkdownElement (..),
     InlineElement (..),
@@ -100,6 +100,9 @@ parseInlineElement =
       parsePlainText
     ]
 
+parseMdHeader :: Parser MarkdownElement
+
+
 -- | Parse markdown text into a MarkdownDoc structure
-parseMarkdown :: Text -> Either (ParseErrorBundle Text String) MarkdownDoc
-parseMarkdown = undefined
+parseMarkdownElement :: Parser MarkdownElement
+parseMarkdownElement = undefined

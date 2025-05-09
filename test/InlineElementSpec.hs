@@ -5,7 +5,7 @@ module InlineElementSpec (spec) where
 
 import Test.Hspec
 import qualified Data.Text as T
-import Text.Megaparsec (parse, errorBundlePretty)
+import Text.Megaparsec (parse, errorBundlePretty, eof)
 import Md2HtmlParser.Parser
 import Md2HtmlParser.Parser.Utils (Parser)
 import Data.Void (Void)
@@ -13,7 +13,7 @@ import Data.Void (Void)
 -- Helper to handle parsing results and throw proper test failures
 parseMdOrFail :: Parser a -> T.Text -> IO a
 parseMdOrFail parser input =
-  case parse parser "" input of
+  case parse (parser <* eof) "" input of
     Right result -> return result
     Left err -> expectationFailure ("Failed to parse: " ++ show err) >> undefined
 
@@ -24,6 +24,17 @@ shouldFailToParse parser input =
     Right result -> expectationFailure $ 
       "Expected parsing to fail, but succeeded with result: " ++ show result
     Left _ -> return () -- Error is expected, so test passes
+
+shouldParsePartially :: Show a => Parser a -> T.Text -> Expectation
+shouldParsePartially parser input =
+  case parse parser "" input of
+    Right _ -> do
+      case parse (parser <* eof) "" input of
+        Right _ -> expectationFailure "Expected partial parsing, but succeeded to parse the whole input"
+        Left _ -> return ()
+    Left err -> expectationFailure $
+      "Expected partial parsing, but failed to parse anything: " ++ show err
+
 
 spec :: Spec
 spec = do
@@ -138,3 +149,9 @@ spec = do
       
     it "fails for unclosed image" $ do
       shouldFailToParse parseInlineElement "![alt text"
+
+    it "fails for invalid nested structure" $ do
+      shouldParsePartially parseInlineElement "*outer **inner*"
+
+    it "fails for too mane line breakes" $ do
+      shouldParsePartially parseInlineElement "alt text\n"

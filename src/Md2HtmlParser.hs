@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Md2HtmlParser 
-  ( parseMarkdown
+  ( parseMarkdownElement
   , markdownToHtml
   , renderHtml
   , processMarkdown
@@ -9,7 +9,7 @@ module Md2HtmlParser
   , HtmlDoc(..)
   ) where
 
-import Md2HtmlParser.Parser (parseMarkdown, MarkdownDoc(..))
+import Md2HtmlParser.Parser (parseMarkdownElement, MarkdownDoc(..))
 import Md2HtmlParser.HTML (markdownToHtml, renderHtml, HtmlDoc(..))
 import qualified Data.Text as T
 
