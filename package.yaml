@@ -27,6 +27,9 @@ dependencies:
 - containers
 - directory
 - optparse-applicative >= 0.15
+- transformers
+- mtl
+- filepath
 
 ghc-options:
 - -Wall
@@ -47,6 +50,7 @@ library:
     - Md2HtmlParser.Parser.Utils
     - Md2HtmlParser.HTML
     - Md2HtmlParser.CLI
+    - Md2HtmlParser.Logger
 
 executables:
   Md2HtmlParser-exe:

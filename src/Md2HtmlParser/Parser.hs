@@ -19,21 +19,23 @@ import Data.Char (isDigit)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text as Text
+import Md2HtmlParser.Logger (logParserCall)
 import Md2HtmlParser.Parser.Utils
   ( Parser,
     endOfLine,
     indented,
-    manyTill1,
     parens,
     square,
     symbol,
     takeUntilSpecialOrNewline,
     textString,
   )
+import System.IO.Unsafe (unsafePerformIO)
 import Text.Megaparsec
   ( anySingle,
     choice,
     eof,
+    getInput,
     many,
     optional,
     satisfy,
@@ -42,8 +44,24 @@ import Text.Megaparsec
     try,
     (<?>),
     (<|>),
+    manyTill,
   )
 import Text.Megaparsec.Char (char, string)
+
+-- | Logs parser execution and returns the result
+withLogs :: String -> Parser a -> Parser a
+withLogs name parser = do
+  -- We can use showInput to get a preview of the current input
+  inputPreview <- showCurrentInput
+  -- Log the parser call but return the original parser
+  seq (unsafePerformIO $ logParserCall name inputPreview) parser
+
+-- | Helper function to safely get a string representation of the current input
+showCurrentInput :: Parser String
+showCurrentInput = do
+  s <- getInput
+  -- Take at most 60 characters to avoid overwhelming logs
+  return $ take 60 (T.unpack s) ++ (if T.length s > 60 then "..." else "")
 
 -- | Represents a markdown document
 newtype MarkdownDoc = MarkdownDoc [MarkdownElement]
@@ -78,44 +96,45 @@ data MarkdownElement
   deriving (Show, Eq)
 
 parsePlainText :: Parser InlineElement
-parsePlainText = PlainText <$> takeUntilSpecialOrNewline
+parsePlainText = withLogs "parsePlainText" $
+  PlainText <$> takeUntilSpecialOrNewline
 
 parseItalic :: Parser InlineElement
-parseItalic = do
+parseItalic = withLogs "parseItalic" $ do
   start <- try (textString "_") <|> try (textString "*")
   content <- try (some parseInlineElement)
   _ <- textString (Text.unpack start)
   return $ ItalicText content
 
 parseBold :: Parser InlineElement
-parseBold = do
+parseBold = withLogs "parseBold" $ do
   start <- try (textString "__") <|> try (textString "**")
   content <- try (some parseInlineElement)
   _ <- textString (Text.unpack start)
   return $ BoldText content
 
 parseCodeText :: Parser InlineElement
-parseCodeText = do
+parseCodeText = withLogs "parseCodeText" $ do
   _ <- symbol '`'
-  content <- takeWhileP (Just "code text") (\c -> c /= '`' && c /= '\n')
+  content <- takeWhileP (Just "code text") (\c -> not (c == '`' || c == '\n'))
   _ <- symbol '`'
   return $ CodeText content
 
 parseLinkText :: Parser InlineElement
-parseLinkText = do
+parseLinkText = withLogs "parseLinkText" $ do
   text <- square (many parseInlineElement)
   url <- parens takeUntilSpecialOrNewline
   return $ LinkText text url
 
 parseImageText :: Parser InlineElement
-parseImageText = do
+parseImageText = withLogs "parseImageText" $ do
   _ <- symbol '!'
   text <- square takeUntilSpecialOrNewline
   url <- parens takeUntilSpecialOrNewline
   return $ ImageText text url
 
 parseInlineElement :: Parser InlineElement
-parseInlineElement =
+parseInlineElement = withLogs "parseInlineElement" $
   choice
     [ parseImageText,
       parseLinkText,
@@ -126,25 +145,25 @@ parseInlineElement =
     ]
 
 parseMdHeader :: Parser MarkdownElement
-parseMdHeader = do
+parseMdHeader = withLogs "parseMdHeader" $ do
   level <- length <$> some (symbol '#')
   content <- many parseInlineElement
   _ <- endOfLine *> pure () <|> eof
   return $ Header level content
 
 parseParagraph :: Parser MarkdownElement
-parseParagraph = do
+parseParagraph = withLogs "parseParagraph" $ do
   content <- some parseInlineElement
   _ <- endOfLine *> pure () <|> eof
   return $ Paragraph content
 
 parseCodeBlock :: Parser MarkdownElement
-parseCodeBlock = do
+parseCodeBlock = withLogs "parseCodeBlock" $ do
   _ <- string (Text.pack "```")
-  lang <- optional $ takeWhileP (Just "language") (/= '\n')
+  lang <- optional $ takeWhileP (Just "language") (\c -> not (c == '\n' || c == ' '))
   _ <- endOfLine
   content <-
-    manyTill1
+    manyTill
       anySingle
       ( try $ do
           _ <- endOfLine
@@ -158,13 +177,14 @@ parseCodeBlock = do
   return $ CodeBlock language (T.pack content)
 
 parseBulletListInlineElem :: Parser [InlineElement]
-parseBulletListInlineElem = do
+parseBulletListInlineElem = withLogs "parseBulletListInlineElem" $ do
   _ <- (char '*' <?> "* point") <|> (char '-' <?> "- point")
   _ <- char ' ' <?> "space"
-  some parseInlineElement
+
+  many parseInlineElement
 
 parseBulletList :: Parser MarkdownElement
-parseBulletList = do
+parseBulletList = withLogs "parseBulletList" $ do
   level <- length <$> many (char ' ')
   firstItem <- parseBulletListInlineElem
   restItems <-  many $ try $ do
@@ -174,15 +194,15 @@ parseBulletList = do
   return $ BulletList (firstItem : restItems)
 
 parseNumberedListInlineElem :: Parser [InlineElement]
-parseNumberedListInlineElem = do
+parseNumberedListInlineElem = withLogs "parseNumberedListInlineElem" $ do
   _ <- some (satisfy isDigit) <?> "digit"
   _ <- char '.' <?> "period"
   _ <- char ' ' <?> "space"
 
-  some parseInlineElement
+  many parseInlineElement
 
 parseNumberedList :: Parser MarkdownElement
-parseNumberedList = do
+parseNumberedList = withLogs "parseNumberedList" $ do
   level <- length <$> many (char ' ')
   firstItem <- parseNumberedListInlineElem
   restItems <- many $ try $ do
@@ -192,28 +212,29 @@ parseNumberedList = do
   return $ NumberedList (firstItem : restItems)
 
 parseHorizontalRule :: Parser MarkdownElement
-parseHorizontalRule = do
+parseHorizontalRule = withLogs "parseHorizontalRule" $ do
   _ <- string (Text.pack "---")
   _ <- endOfLine *> pure () <|> eof
   return HorizontalRule
 
 parseEmptyLine :: Parser MarkdownElement
-parseEmptyLine = EmptyLine <$ endOfLine
+parseEmptyLine = withLogs "parseEmptyLine" $ EmptyLine <$ endOfLine
 
 -- | Parse markdown text into a MarkdownDoc structure
 parseMarkdownElement :: Parser MarkdownElement
 parseMarkdownElement =
-  choice
-    [ parseMdHeader,
-      parseCodeBlock,
-      try parseBulletList,
-      try parseNumberedList,
-      parseParagraph,
-      parseHorizontalRule,
-      parseEmptyLine
-    ]
+  withLogs "parseMarkdownElement" $
+    choice
+      [ parseMdHeader,
+        parseCodeBlock,
+        try parseBulletList,
+        try parseNumberedList,
+        parseHorizontalRule,
+        parseParagraph,
+        parseEmptyLine
+      ]
 
 parseMarkdownDoc :: Parser MarkdownDoc
-parseMarkdownDoc = do
+parseMarkdownDoc = withLogs "parseMarkdownDoc" $ do
   content <- many parseMarkdownElement
   return $ MarkdownDoc content

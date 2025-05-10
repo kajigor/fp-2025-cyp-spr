@@ -36,6 +36,35 @@ shouldParsePartially parser input =
 
 spec :: Spec
 spec = do
+  describe "Edge Cases" $ do
+    it "handles empty numbered lists correctly" $ do
+      let markdown = "1. "
+      result <- parseMdOrFail parseMarkdownElement markdown
+      case result of
+        NumberedList [[]] -> return ()
+        _ -> expectationFailure $ "Expected empty NumberedList but got " ++ show result
+    
+    it "handles empty bullet lists correctly" $ do
+      let markdown = "* "
+      result <- parseMdOrFail parseMarkdownElement markdown
+      case result of
+        BulletList [[]] -> return ()
+        _ -> expectationFailure $ "Expected empty BulletList but got " ++ show result
+    
+    it "handles long headers correctly" $ do
+      let markdown = "########## Very long header" -- More than 6 # characters
+      result <- parseMdOrFail parseMarkdownElement markdown
+      case result of
+        Header 10 [PlainText "Very long header"] -> return ()
+        _ -> expectationFailure $ "Expected Header level 10 but got " ++ show result
+    
+    it "handles complex code blocks with backticks in content" $ do
+      let markdown = "```\ncode with ` backtick\n```"
+      result <- parseMdOrFail parseMarkdownElement markdown
+      case result of
+        CodeBlock Nothing "code with ` backtick" -> return ()
+        _ -> expectationFailure $ "Expected CodeBlock with backtick but got " ++ show result
+  
   describe "Markdown Element Parsing" $ do
     it "parses header correctly" $ do
       result1 <- parseMdOrFail parseMarkdownElement "# Level 1 Header"
@@ -151,3 +180,82 @@ spec = do
     it "fails for malformed numbered list" $ do
       result <- parseMdOrFail parseMarkdownElement "1.malformed"
       result `shouldBe` Paragraph [PlainText "1.malformed"]
+      
+  describe "Nested Lists" $ do
+    it "parses multi-level bullet lists correctly" $ do
+      let markdown = "* Level 1\n  * Level 2\n    * Level 3"
+      result <- parseMdOrFail parseMarkdownDoc markdown
+      case result of
+        MarkdownDoc elements -> 
+          length elements `shouldBe` 3
+        _ -> expectationFailure $ "Expected MarkdownDoc but got " ++ show result
+    
+    it "parses multi-level numbered lists correctly" $ do
+      let markdown = "1. Level 1\n  1. Level 2\n    1. Level 3"
+      result <- parseMdOrFail parseMarkdownDoc markdown
+      case result of
+        MarkdownDoc elements -> 
+          length elements `shouldBe` 3
+        _ -> expectationFailure $ "Expected MarkdownDoc but got " ++ show result
+    
+    it "parses mixed list types correctly" $ do
+      let markdown = "1. Numbered item\n* Bullet item"
+      result <- parseMdOrFail parseMarkdownDoc markdown
+      case result of
+        MarkdownDoc elements -> do
+          length elements `shouldBe` 2
+          case elements !! 0 of
+            NumberedList items -> length items `shouldBe` 1
+            _ -> expectationFailure $ "Expected NumberedList but got " ++ show (elements !! 0)
+          case elements !! 1 of
+            BulletList items -> length items `shouldBe` 1
+            _ -> expectationFailure $ "Expected BulletList but got " ++ show (elements !! 1)
+        _ -> expectationFailure $ "Expected MarkdownDoc but got " ++ show result
+        
+  describe "Complex Formatting in Lists" $ do
+    it "parses lists with inline formatting correctly" $ do
+      let markdown = "* Item with *italic* and **bold**\n* Another item with `code`"
+      result <- parseMdOrFail parseMarkdownDoc markdown
+      case result of
+        MarkdownDoc [BulletList items] -> do
+          length items `shouldBe` 2
+          length (items !! 0) `shouldBe` 4  -- PlainText, ItalicText, PlainText, BoldText
+          length (items !! 1) `shouldBe` 2  -- PlainText, CodeText
+        _ -> expectationFailure $ "Expected MarkdownDoc with BulletList but got " ++ show result
+    
+    it "parses numbered lists with inline formatting correctly" $ do
+      let markdown = "1. Item with *italic*\n2. Item with **bold**"
+      result <- parseMdOrFail parseMarkdownDoc markdown
+      case result of
+        MarkdownDoc [NumberedList items] -> do
+          length items `shouldBe` 2
+          length (items !! 0) `shouldBe` 2  -- PlainText, ItalicText
+          length (items !! 1) `shouldBe` 2  -- PlainText, BoldText
+        _ -> expectationFailure $ "Expected MarkdownDoc with NumberedList but got " ++ show result
+  
+  describe "Complex Document Structure" $ do
+    it "parses document with multiple different elements" $ do
+      let markdown = "# Header\n\n*Italic paragraph*\n\n```\ncode\n```\n\n1. List item\n\n---\n"
+      result <- parseMdOrFail parseMarkdownDoc markdown
+      case result of
+        MarkdownDoc elements -> do
+          length elements `shouldBe` 9
+          elements !! 0 `shouldBe` Header 1 [PlainText "Header"]
+          elements !! 1 `shouldBe` EmptyLine
+          elements !! 2 `shouldBe` Paragraph [ItalicText [PlainText "Italic paragraph"]]
+          elements !! 3 `shouldBe` EmptyLine
+          elements !! 4 `shouldBe` CodeBlock Nothing "code"
+          elements !! 5 `shouldBe` EmptyLine
+          elements !! 6 `shouldBe` NumberedList [[PlainText "List item"]]
+          elements !! 7 `shouldBe` EmptyLine
+          elements !! 8 `shouldBe` HorizontalRule
+        _ -> expectationFailure $ "Expected MarkdownDoc but got " ++ show result
+    
+    it "parses complex combination of elements correctly" $ do
+      let markdown = "# Header with **bold**\n\n * List with [link](url)\n * List with `code`\n---"
+      result <- parseMdOrFail parseMarkdownDoc markdown
+      print result
+      case result of
+        MarkdownDoc elements -> 
+          length elements `shouldBe` 5  -- Header, BulletList, EmptyLine, HorizontalRule, Paragraph
+        _ -> expectationFailure $ "Expected MarkdownDoc but got " ++ show result
