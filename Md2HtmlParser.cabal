@@ -82,6 +82,7 @@ test-suite Md2HtmlParser-test
   main-is: Spec.hs
   other-modules:
       CodeBlockSpec
+      HTMLSpec
       InlineElementSpec
       LinkAndImageSpec
       ListParsingSpec
