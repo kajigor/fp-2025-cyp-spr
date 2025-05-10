@@ -19,15 +19,15 @@ import Data.Char (isDigit)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text as Text
-import Md2HtmlParser.Logger (logParserCall)
+import Md2HtmlParser.Logger (logParserCall, logParserResult)
 import Md2HtmlParser.Parser.Utils
   ( Parser,
     endOfLine,
     indented,
     parens,
     square,
-    symbol,
     takeUntilSpecialOrNewline,
+    takeUntilSpecialOrNewlineOrEmpty,
     textString,
   )
 import System.IO.Unsafe (unsafePerformIO)
@@ -49,12 +49,18 @@ import Text.Megaparsec
 import Text.Megaparsec.Char (char, string)
 
 -- | Logs parser execution and returns the result
-withLogs :: String -> Parser a -> Parser a
+withLogs :: Show a => String -> Parser a -> Parser a
 withLogs name parser = do
-  -- We can use showInput to get a preview of the current input
+  -- Get a preview of the current input before parsing
   inputPreview <- showCurrentInput
-  -- Log the parser call but return the original parser
-  seq (unsafePerformIO $ logParserCall name inputPreview) parser
+  -- Log the parser call
+  seq (unsafePerformIO $ logParserCall name inputPreview) $ do
+    -- Run the actual parser
+    result <- parser
+    -- Get the remaining input after parsing
+    remaining <- showCurrentInput
+    -- Log the result and remaining input
+    seq (unsafePerformIO $ logParserResult name result remaining) $ return result
 
 -- | Helper function to safely get a string representation of the current input
 showCurrentInput :: Parser String
@@ -115,9 +121,9 @@ parseBold = withLogs "parseBold" $ do
 
 parseCodeText :: Parser InlineElement
 parseCodeText = withLogs "parseCodeText" $ do
-  _ <- symbol '`'
+  _ <- char '`'
   content <- takeWhileP (Just "code text") (\c -> not (c == '`' || c == '\n'))
-  _ <- symbol '`'
+  _ <- char '`'
   return $ CodeText content
 
 parseLinkText :: Parser InlineElement
@@ -128,8 +134,8 @@ parseLinkText = withLogs "parseLinkText" $ do
 
 parseImageText :: Parser InlineElement
 parseImageText = withLogs "parseImageText" $ do
-  _ <- symbol '!'
-  text <- square takeUntilSpecialOrNewline
+  _ <- char '!'
+  text <- square takeUntilSpecialOrNewlineOrEmpty
   url <- parens takeUntilSpecialOrNewline
   return $ ImageText text url
 
@@ -146,7 +152,8 @@ parseInlineElement = withLogs "parseInlineElement" $
 
 parseMdHeader :: Parser MarkdownElement
 parseMdHeader = withLogs "parseMdHeader" $ do
-  level <- length <$> some (symbol '#')
+  level <- length <$> some (char '#')
+  _ <- some (char ' ')
   content <- many parseInlineElement
   _ <- endOfLine *> pure () <|> eof
   return $ Header level content

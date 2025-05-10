@@ -20,7 +20,7 @@ main = do
   
   putStrLn "Parsing Markdown examples:"
 
-  -- Try a few different examples to see the logging in action
+--  -- Try a few different examples to see the logging in action
 --  putStrLn "\nParsing a simple list with code:"
 --  print ( parse parseMarkdownDoc ""
 --    (T.pack " * List with `code`\n")
@@ -36,10 +36,17 @@ main = do
 --    (T.pack "# Header\n\n  1. First item\n  2. Second item\n\n  * Bullet item\n\n---\n")
 --    )
     
-  putStrLn "\nParsing a list with code followed by horizontal rule:"
-  print ( parse parseMarkdownDoc ""
-    (T.pack "  * List with `code`\n---")
-    )
+--  putStrLn "\nParsing a list with code followed by horizontal rule:"
+--  print ( parse parseMarkdownDoc ""
+--    (T.pack "  * List with `code`\n---")
+--    )
+
+--  print ( parse parseMarkdownDoc ""
+--    (T.pack "text\n`code`\n---")
+--    )
+--  print ( parse parseInlineElement ""
+--    (T.pack "`code`\n")
+--    )
   
   -- Print parser logs summary
   printParserLogs

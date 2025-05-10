@@ -7,6 +7,7 @@ module Md2HtmlParser.Logger
     enableParserDebugging,
     isParserDebugEnabled,
     logParserCall,
+    logParserResult,
     printParserLogs
   )
 where
@@ -63,6 +64,17 @@ logParserCall name input = do
     then do
       hPutStrLn stderr $ "[PARSER] Call: " ++ name
       hPutStrLn stderr $ "[PARSER] Input: \"" ++ input ++ "\""
+    else return ()
+
+-- | Log parser result and remaining input after parsing
+logParserResult :: Show a => String -> a -> String -> IO ()
+logParserResult name result remainingInput = do
+  enabled <- isParserDebugEnabled
+  if enabled
+    then do
+      hPutStrLn stderr $ "[PARSER] Result from " ++ name ++ ": " ++ show result
+      hPutStrLn stderr $ "[PARSER] Remaining: \"" ++ remainingInput ++ "\""
+      hPutStrLn stderr $ "[PARSER] ------------------"
     else return ()
 
 -- | Print all parser logs 

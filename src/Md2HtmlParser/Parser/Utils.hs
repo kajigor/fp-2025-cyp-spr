@@ -1,7 +1,6 @@
 module Md2HtmlParser.Parser.Utils
   ( Parser,
     spaceConsumer,
-    symbol,
     lexeme,
     integer,
     parens,
@@ -26,6 +25,7 @@ module Md2HtmlParser.Parser.Utils
     notSpecialChar,
     lineWithPrefix,
     takeUntilSpecialOrNewline,
+    takeUntilSpecialOrNewlineOrEmpty,
     betweenChars,
     textString,
     indented,
@@ -47,10 +47,6 @@ type Parser = Parsec String Text
 -- | Space consumer: skips whitespace
 spaceConsumer :: Parser ()
 spaceConsumer = L.space space1 empty empty
-
--- | Parse a specific character and consume trailing whitespace
-symbol :: Char -> Parser Char
-symbol c = char c <* spaceConsumer <?> [c]
 
 -- | Apply a parser and consume trailing whitespace
 lexeme :: Parser a -> Parser a
@@ -200,6 +196,11 @@ lineWithPrefix prefix = try $ do
 -- | Take text until first special character or newline
 takeUntilSpecialOrNewline :: Parser Text
 takeUntilSpecialOrNewline = takeWhileP1 (\c -> not (isSpecialChar c || c == '\n'))
+                          <?> "text without special characters or newlines"
+
+-- | Take text until first special character or newline
+takeUntilSpecialOrNewlineOrEmpty :: Parser Text
+takeUntilSpecialOrNewlineOrEmpty = takeWhileP (Just "subsequent characters") (\c -> not (isSpecialChar c || c == '\n'))
                           <?> "text without special characters or newlines"
 
 -- | Parse a string and return it as Text

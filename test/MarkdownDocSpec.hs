@@ -252,10 +252,13 @@ spec = do
         _ -> expectationFailure $ "Expected MarkdownDoc but got " ++ show result
     
     it "parses complex combination of elements correctly" $ do
-      let markdown = "# Header with **bold**\n\n * List with [link](url)\n * List with `code`\n---"
+      let markdown = "## Header with **bold**\n\n * List with [link](url)\n * List with `code`\n---"
       result <- parseMdOrFail parseMarkdownDoc markdown
-      print result
       case result of
-        MarkdownDoc elements -> 
-          length elements `shouldBe` 5  -- Header, BulletList, EmptyLine, HorizontalRule, Paragraph
+        MarkdownDoc elements -> do
+          length elements `shouldBe` 4
+          elements !! 0 `shouldBe` Header 2 [PlainText "Header with ",BoldText [PlainText "bold"]]
+          elements !! 1 `shouldBe` EmptyLine
+          elements !! 2 `shouldBe` BulletList [[PlainText "List with ",LinkText [PlainText "link"] "url"],[PlainText "List with ",CodeText "code"]]
+          elements !! 3 `shouldBe` HorizontalRule
         _ -> expectationFailure $ "Expected MarkdownDoc but got " ++ show result
