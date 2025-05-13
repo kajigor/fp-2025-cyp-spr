@@ -18,8 +18,8 @@ data Expr = Val Int | Var String
 
 data Command = 
     Forward Expr
-  | TurnLeft    Expr
-  | TurnRight   Expr
+  | TurnLeft 
+  | TurnRight
   | PenUp
   | PenDown
   | Repeat  Expr   [Command]
@@ -70,10 +70,10 @@ forwardCmd :: Parser Command
 forwardCmd = Forward <$> (symbol "forward" *> expr)
 
 leftCmd :: Parser Command
-leftCmd = TurnLeft <$> (symbol "left" *> expr)
+leftCmd = TurnLeft <$ symbol "left"
 
 rightCmd :: Parser Command
-rightCmd = TurnRight <$> (symbol "right" *> expr)
+rightCmd = TurnRight <$ symbol "right"
 
 penUpCmd :: Parser Command
 penUpCmd = PenUp <$ symbol "penup"
