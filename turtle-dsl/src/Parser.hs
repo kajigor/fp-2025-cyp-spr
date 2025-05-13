@@ -57,6 +57,7 @@ fieldSize = optional $ try $ do
   _ <- char 'x'
   h <- L.decimal
   _ <- many (char ' ' <|> char '\t') <* eol
+  _ <- sc
   return (w, h)
 
 letCmd :: Parser Command

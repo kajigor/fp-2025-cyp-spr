@@ -12,8 +12,7 @@ data Turtle = Turtle
   , dir :: Int -- direction (0 -> up, 1 -> right, 2 -> down, 3 -> left)
   } deriving (Show)
 
-type Canvas = M.Map (Int, Int) Char -- final position of turtle will be % 
-                                    -- and pen will be #, empty points *
+type Canvas = M.Map (Int, Int) Char -- pen will be #, empty points .
 
 data World = World
   { env    :: Env
@@ -52,8 +51,9 @@ eval w@(World e (Turtle (x, y) d) canv (wMax, hMax) penPos) (Forward expr) = do
           Nothing -> (curr, acc)  -- if stuck - stand on place
 
       add (a, b) (a', b') = (a + a', b + b')
-
-      (endPos, canv') = walk dist (x, y) canv
+      
+      canv0 = if penPos then M.insert (x, y) '#' canv else canv
+      (endPos, canv') = walk dist (x, y) canv0
 
   Right w { turtle = Turtle endPos d, canvas = canv' }
 eval w TurnRight = 
@@ -67,7 +67,10 @@ eval w TurnLeft =
   in 
     Right w { turtle = new_turtle }
 eval w PenUp   = Right w { pen = False }
-eval w PenDown = Right w { pen = True }
+eval w PenDown =
+  let 
+    new_world = w { pen = True }
+  in eval new_world (Forward (Val 0))
 eval w (Let name expr) = do
   let e = env w
   case getExpr e expr of 
