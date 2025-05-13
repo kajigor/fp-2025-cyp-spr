@@ -1,0 +1,11 @@
+20x20
+
+let x = 20
+repeat 20 [
+  pendown
+  penup
+  forward 1
+  right
+  forward 1
+  left
+]
