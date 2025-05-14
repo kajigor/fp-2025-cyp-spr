@@ -34,7 +34,6 @@ library
       Md2HtmlParser.CLI
       Md2HtmlParser.Logger
   other-modules:
-      Lib
       Paths_Md2HtmlParser
   autogen-modules:
       Paths_Md2HtmlParser
