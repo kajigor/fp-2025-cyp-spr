@@ -1,0 +1,39 @@
+{
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/config.schema.json",
+  "grammars": [
+    {
+      "name": "turtle",
+      "camelcase": "Turtle",
+      "title": "Turtle",
+      "scope": "source.turtle",
+      "file-types": [
+        "turtle"
+      ],
+      "injection-regex": "^turtle$",
+      "class-name": "TreeSitterTurtle"
+    }
+  ],
+  "metadata": {
+    "version": "1.0.0",
+    "license": "MIT",
+    "description": "turtle DSL",
+    "authors": [
+      {
+        "name": "Mikhail Maliugin",
+        "email": "ghastmisha089@gmail.com"
+      }
+    ],
+    "links": {
+      "repository": "https://github.com/miko089/fp-2025-cyp-spr/tree/proj"
+    }
+  },
+  "bindings": {
+    "c": true,
+    "go": true,
+    "node": true,
+    "python": true,
+    "rust": true,
+    "swift": true,
+    "zig": false
+  }
+}
