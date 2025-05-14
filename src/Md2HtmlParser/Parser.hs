@@ -28,6 +28,7 @@ import Md2HtmlParser.Parser.Utils
     square,
     takeUntilSpecialOrNewline,
     takeUntilSpecialOrNewlineOrEmpty,
+    takeUntilAllowedInLink,
     textString,
   )
 import System.IO.Unsafe (unsafePerformIO)
@@ -129,14 +130,14 @@ parseCodeText = withLogs "parseCodeText" $ do
 parseLinkText :: Parser InlineElement
 parseLinkText = withLogs "parseLinkText" $ do
   text <- square (many parseInlineElement)
-  url <- parens takeUntilSpecialOrNewline
+  url <- try (parens takeUntilAllowedInLink)
   return $ LinkText text url
 
 parseImageText :: Parser InlineElement
 parseImageText = withLogs "parseImageText" $ do
   _ <- char '!'
   text <- square takeUntilSpecialOrNewlineOrEmpty
-  url <- parens takeUntilSpecialOrNewline
+  url <- parens takeUntilAllowedInLink
   return $ ImageText text url
 
 parseInlineElement :: Parser InlineElement

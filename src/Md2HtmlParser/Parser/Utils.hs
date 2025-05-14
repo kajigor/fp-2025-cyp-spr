@@ -26,6 +26,7 @@ module Md2HtmlParser.Parser.Utils
     lineWithPrefix,
     takeUntilSpecialOrNewline,
     takeUntilSpecialOrNewlineOrEmpty,
+    takeUntilAllowedInLink,
     betweenChars,
     textString,
     indented,
@@ -181,7 +182,7 @@ withManyTill p end f = f <$> manyTill p end
 
 -- | Check if a character is a special Markdown character
 isSpecialChar :: Char -> Bool
-isSpecialChar c = c `elem` ("*_`[]()!#+|-" :: String)
+isSpecialChar c = c `elem` ("*_`[]!#+|" :: String)
 
 -- | Check if a character is not a special Markdown character
 notSpecialChar :: Char -> Bool
@@ -197,6 +198,11 @@ lineWithPrefix prefix = try $ do
 takeUntilSpecialOrNewline :: Parser Text
 takeUntilSpecialOrNewline = takeWhileP1 (\c -> not (isSpecialChar c || c == '\n'))
                           <?> "text without special characters or newlines"
+
+-- | Take symbols allowed inside links
+takeUntilAllowedInLink :: Parser Text
+takeUntilAllowedInLink = takeWhileP1 (\c -> not (c `elem` ("`[](){}<>\"\'|^ " :: String) || c == '\n'))
+                          <?> "text without special characters or newlines inside link"
 
 -- | Take text until first special character or newline
 takeUntilSpecialOrNewlineOrEmpty :: Parser Text

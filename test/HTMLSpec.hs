@@ -87,7 +87,7 @@ spec = do
       let md = MarkdownDoc [CodeBlock (Just (T.pack "haskell")) (T.pack "main = putStrLn \"Hello\"")]
       let html = renderHtml $ markdownToHtml md
       print html
-      T.isInfixOf (T.pack "<pre><code class=\"language-haskell\">main = putStrLn  &quot;Hello&quot;</code></pre>") html `shouldBe` True
+      T.isInfixOf (T.pack "<pre><code class=\"language-haskell\">main = putStrLn &quot;Hello&quot;</code></pre>") html `shouldBe` True
       
     it "converts links correctly" $ do
       let md = MarkdownDoc [Paragraph [LinkText [PlainText (T.pack "Google")] (T.pack "https://google.com")]]

@@ -34,12 +34,12 @@ A Haskell library and command-line tool for parsing Markdown and converting it t
   - Horizontal rules
 - Nested structures and inline formatting
 
-## Installation
+## Usage
 
-1. Clone the repository
-2. Run `cabal build` to build the project
-3. Use `cabal run` to run the converter
+```bash
+stack run Md2HtmlParser-exe -- -h
+```
 
-## Command Line Usage
+### Running the Application
 
-The tool uses `optparse-applicative` for command-line argument parsing.
+You can run the parser directly with Cabal:

@@ -10,8 +10,12 @@ import Options.Applicative
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import System.Directory (doesFileExist)
-import System.IO (hPutStrLn, stderr)
+import System.IO (hPutStrLn, stderr, stdin, stdout)
 import System.Exit (exitFailure)
+import Control.Monad (when)
+
+import Md2HtmlParser (processMarkdown)
+import Md2HtmlParser.Logger (enableParserDebugging)
 
 -- | Command line options
 data Options = Options
@@ -58,7 +62,60 @@ parseOptions = execParser opts
       ( fullDesc
       <> progDesc "Convert Markdown to HTML"
       <> header "Md2HtmlParser - a markdown to HTML converter")
+
+-- | Log a message if verbose mode is enabled
+logMessage :: Bool -> String -> IO ()
+logMessage verbose msg = when verbose $ putStrLn msg
+
+-- | Read input from a file or stdin
+readInput :: Options -> IO T.Text
+readInput opts = do
+  logMessage (optVerbose opts) "Reading input..."
+  case optInput opts of
+    Nothing -> do
+      logMessage (optVerbose opts) "Reading from stdin"
+      TIO.getContents
+    Just filePath -> do
+      fileExists <- doesFileExist filePath
+      if fileExists
+        then do
+          logMessage (optVerbose opts) $ "Reading from file: " ++ filePath
+          TIO.readFile filePath
+        else do
+          hPutStrLn stderr $ "Error: Input file does not exist: " ++ filePath
+          exitFailure
+
+-- | Write output to a file or stdout
+writeOutput :: Options -> T.Text -> IO ()
+writeOutput opts html = do
+  logMessage (optVerbose opts) "Writing output..."
+  case optOutput opts of
+    Nothing -> do
+      logMessage (optVerbose opts) "Writing to stdout"
+      TIO.putStrLn html
+    Just filePath -> do
+      logMessage (optVerbose opts) $ "Writing to file: " ++ filePath
+      TIO.writeFile filePath html
+      logMessage (optVerbose opts) $ "Output written to: " ++ filePath
+
+-- | Run the markdown to HTML conversion process
 run :: Options -> IO ()
 run opts = do
-  -- TODO: Implement the actual functionality
-  pure ()
+  -- Enable debugging if verbose mode is on
+  enableParserDebugging (optVerbose opts)
+  
+  -- Log program start
+  logMessage (optVerbose opts) "Starting Markdown to HTML conversion"
+  
+  -- Read input
+  markdownText <- readInput opts
+  
+  -- Process markdown to HTML
+  logMessage (optVerbose opts) "Converting Markdown to HTML"
+  let htmlOutput = processMarkdown markdownText
+  
+  -- Write output
+  writeOutput opts htmlOutput
+  
+  -- Log completion
+  logMessage (optVerbose opts) "Conversion completed successfully"
