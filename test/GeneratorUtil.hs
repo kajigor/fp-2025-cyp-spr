@@ -142,12 +142,11 @@ genParagraphMarkdown = do
 genCodeBlockMarkdown :: Gen (T.Text, MarkdownElement)
 genCodeBlockMarkdown = do
   lang <- frequency [(1, Just <$> genSafeText `suchThat` (\t -> not (T.null t) && not (T.any (== ' ') t) && not (T.any (== '\n') t))), (3, return Nothing)]
-  -- Limited the number of code lines to 5
-  codeLines <- listOf1 (genSafeText `suchThat` (not . T.isInfixOf "```")) `suchThat` (\l -> length l <= 5)
-  let codeContent = T.unlines codeLines
+  codeLines <- listOf1 (genPotentiallyEmptySafeText `suchThat` (not . T.isInfixOf "```")) `suchThat` (\l -> length l <= 5)
+  let codeContent = T.intercalate "\n" codeLines
   let langPart = maybe "" id lang
-  let mdInput = "```" <> langPart <> "\n" <> codeContent <> "```\n"
-  return (mdInput, CodeBlock lang (T.stripEnd codeContent))
+  let mdInput = "```" <> langPart <> "\n" <> codeContent <> "\n```\n"
+  return (mdInput, CodeBlock lang codeContent)
 
 -- | Generator for a bullet list item
 genBulletListItem :: Gen (T.Text, [InlineElement])
@@ -212,13 +211,35 @@ genMarkdownElement = sized $ \s ->
           -- , (1, BlockQuote <$> ...)
         ]
 
+-- | Merges consecutive Paragraph, BulletList, and NumberedList elements.
+mergeConsecutiveMarkdownElements :: [MarkdownElement] -> [MarkdownElement]
+mergeConsecutiveMarkdownElements [] = []
+mergeConsecutiveMarkdownElements [x] = [x]
+mergeConsecutiveMarkdownElements (x1 : x2 : xs) =
+  case (x1, x2) of
+    (Paragraph es1, Paragraph es2) ->
+      -- Merge consecutive Paragraphs by concatenating their inline elements
+      mergeConsecutiveMarkdownElements (Paragraph (mergeConsecutiveFormatting (es1 ++ es2)) : xs)
+    (BulletList items1, BulletList items2) ->
+      -- Merge consecutive BulletLists by concatenating their items
+      mergeConsecutiveMarkdownElements (BulletList (items1 ++ items2) : xs)
+    (NumberedList items1, NumberedList items2) ->
+      -- Merge consecutive NumberedLists by concatenating their items
+      -- Note: This simple merge might not be correct if list numbering matters,
+      -- but it matches the structure for this type in your data model.
+      mergeConsecutiveMarkdownElements (NumberedList (items1 ++ items2) : xs)
+    -- If elements are not of the same mergeable type, keep the first and process the rest
+    _ -> x1 : mergeConsecutiveMarkdownElements (x2 : xs)
+
 -- | Generator for MarkdownDoc
 -- Limited the number of Markdown elements in the document to 10
 genMarkdownDoc :: Gen MarkdownDoc
-genMarkdownDoc = MarkdownDoc <$> listOf genMarkdownElement `suchThat` (\l -> length l <= 10)
+genMarkdownDoc = do
+  rawElements <- listOf genMarkdownElement `suchThat` (\l -> length l <= 10)
+  let mergedElements = mergeConsecutiveMarkdownElements rawElements
+  return $ MarkdownDoc mergedElements
 
 -- Helper function to "render" InlineElement to text for generators
--- This is a simplified version, only for generating input strings.
 renderInlineForTest :: InlineElement -> T.Text
 renderInlineForTest (PlainText t) = t
 renderInlineForTest (ItalicText es) = "_" <> T.concat (map renderInlineForTest es) <> "_"
@@ -230,8 +251,6 @@ renderInlineForTest (ImageText alt url) = "![" <> alt <> "](" <> url <> ")"
 -- Generators for specific inline elements for more precise tests
 genSpecificBold :: Gen (T.Text, InlineElement)
 genSpecificBold = do
-  -- Bold content cannot contain BoldText, and consecutive elements are merged
-  -- Limited nested list size to 3
   contentList <- genSizedInlineListWithParent 1 3 (Just BoldTextType) `suchThat` (not . null)
   let marker = "**"
   let renderedContent = T.concat (map renderInlineForTest contentList)
@@ -239,8 +258,6 @@ genSpecificBold = do
 
 genSpecificItalic :: Gen (T.Text, InlineElement)
 genSpecificItalic = do
-  -- Italic content cannot contain ItalicText, and consecutive elements are merged
-  -- Limited nested list size to 3
   contentList <- genSizedInlineListWithParent 1 3 (Just ItalicTextType) `suchThat` (not . null)
   let marker = "_"
   let renderedContent = T.concat (map renderInlineForTest contentList)
@@ -248,14 +265,11 @@ genSpecificItalic = do
 
 genSpecificCodeText :: Gen (T.Text, InlineElement)
 genSpecificCodeText = do
-  -- CodeText content is just text, no recursion needed here.
   content <- genInlineCodeContent
   return ("`" <> content <> "`", CodeText content)
 
 genSpecificLinkText :: Gen (T.Text, InlineElement)
 genSpecificLinkText = do
-  -- Link content cannot contain LinkText or ImageText, and consecutive elements are merged
-  -- Limited nested list size to 3
   altContentList <- genSizedInlineListWithParent 1 3 (Just LinkTextType) `suchThat` (not . null)
   url <- genUrl
   let renderedAlt = T.concat (map renderInlineForTest altContentList)
