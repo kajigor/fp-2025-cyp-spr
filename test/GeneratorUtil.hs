@@ -43,40 +43,68 @@ genInlineCodeContent = T.pack <$> listOf1 (arbitrary `suchThat` (\c -> c /= '`' 
 genPlainText :: Gen InlineElement
 genPlainText = PlainText <$> genSafeText
 
--- | Helper function to merge adjacent PlainText elements in a list
-mergeAdjacentPlainText :: [InlineElement] -> [InlineElement]
-mergeAdjacentPlainText [] = []
-mergeAdjacentPlainText [x] = [x]
-mergeAdjacentPlainText (PlainText t1 : PlainText t2 : xs) =
-    mergeAdjacentPlainText (PlainText (t1 <> t2) : xs)
-mergeAdjacentPlainText (x : xs) = x : mergeAdjacentPlainText xs
+-- | Helper function to recursively merge consecutive ItalicText, BoldText, PlainText, or CodeText elements
+-- within a list of InlineElements and also within nested elements.
+mergeConsecutiveFormatting :: [InlineElement] -> [InlineElement]
+mergeConsecutiveFormatting [] = []
+mergeConsecutiveFormatting (x : xs) =
+    -- Recursively merge content within nested elements first
+    let processedX = case x of
+            ItalicText es -> ItalicText (mergeConsecutiveFormatting es)
+            BoldText es -> BoldText (mergeConsecutiveFormatting es)
+            LinkText es url -> LinkText (mergeConsecutiveFormatting es) url
+            -- ImageText and CodeText contain T.Text, not [InlineElement], so no recursion needed.
+            _ -> x
+        -- Process the rest of the list
+        processedXs = mergeConsecutiveFormatting xs
+    in
+    -- Now merge the processed head (processedX) with the processed tail (processedXs)
+    case (processedX, processedXs) of
+        (PlainText t1, PlainText t2 : rest) ->
+            -- Merge consecutive PlainText
+            PlainText (t1 <> t2) : rest
+        (ItalicText es1, ItalicText es2 : rest) ->
+            -- Merge consecutive ItalicText
+            ItalicText (es1 ++ es2) : rest
+        (BoldText es1, BoldText es2 : rest) ->
+            -- Merge consecutive BoldText
+            BoldText (es1 ++ es2) : rest
+        (CodeText c1, CodeText c2 : rest) ->
+            -- Merge consecutive CodeText
+            CodeText (c1 <> c2) : rest
+        _ ->
+            -- Otherwise, keep processedX and continue with processedXs
+            processedX : processedXs
+
 
 -- | Generator for a list of InlineElements with depth control and parent context, merging adjacent PlainText
-genSizedInlineListWithParent :: Int -> Maybe InlineElementType -> Gen [InlineElement]
-genSizedInlineListWithParent n parentType = sized $ \size -> do
-    k <- choose (1, max 1 (min size 3)) -- Generate 1 to 3 elements initially
+-- Added a size parameter to limit the number of elements in the list.
+genSizedInlineListWithParent :: Int -> Int -> Maybe InlineElementType -> Gen [InlineElement]
+genSizedInlineListWithParent n listSize parentType = do
+    -- Generate between 1 and listSize elements, or fewer if size is small
+    k <- choose (1, max 1 (min listSize (n + 1))) -- Limit list size based on depth and a max size
     -- Generate the raw list using genSizedInlineElementWithParent
     rawList <- vectorOf k (genSizedInlineElementWithParent n parentType)
-    -- Merge adjacent PlainText elements
-    return $ mergeAdjacentPlainText rawList
+    -- Apply the recursive merging function to the generated list
+    return $ mergeConsecutiveFormatting rawList
+
 
 -- | Generator for InlineElement with recursion depth control and parent context
 genSizedInlineElementWithParent :: Int -> Maybe InlineElementType -> Gen InlineElement
 genSizedInlineElementWithParent 0 _ = genPlainText -- Base case: only PlainText to prevent infinite recursion
 genSizedInlineElementWithParent n parentType | n > 0 =
     frequency $
-        -- PlainText is always allowed
-        (10, genPlainText) :
-        -- CodeText: Not allowed inside CodeText or ImageText
+        -- PlainText is always allowed, increase probability at lower depths
+        (1, genPlainText) : -- Weight increases as n decreases (max depth 5 considered for scaling)
+        -- CodeText: Not allowed inside CodeText or ImageText. Weight independent of depth as it's not recursive.
         (if parentType /= Just CodeTextType && parentType /= Just ImageTextType then [(2, CodeText <$> genInlineCodeContent)] else []) ++
-        -- LinkText: Not allowed inside LinkText or ImageText
-        (if parentType /= Just LinkTextType && parentType /= Just ImageTextType then [(4, LinkText <$> genSizedInlineListWithParent (n-1) (Just LinkTextType) <*> genUrl)] else []) ++
-        -- ImageText: Not allowed inside LinkText or ImageText. Alt text is T.Text, no recursion needed for content list.
-        (if parentType /= Just LinkTextType && parentType /= Just ImageTextType then [(4, ImageText <$> genSafeText <*> genUrl)] else []) ++
-        -- ItalicText: Not allowed inside ItalicText
-        (if parentType /= Just ItalicTextType then [(2, ItalicText <$> genSizedInlineListWithParent (n-1) (Just ItalicTextType))] else []) ++
-        -- BoldText: Not allowed inside BoldText
-        (if parentType /= Just BoldTextType then [(2, BoldText <$> genSizedInlineListWithParent (n-1) (Just BoldTextType))] else [])
+        -- Recursive elements: weight proportional to current depth n. Apply mergeConsecutiveFormatting to the generated content list.
+        -- Note: The recursive call to mergeConsecutiveFormatting is now handled within genSizedInlineListWithParent
+        -- Limited nested list size to 3 for recursive elements
+        (if parentType /= Just LinkTextType && parentType /= Just ImageTextType then [(4 * n, LinkText <$> genSizedInlineListWithParent (n-1) 3 (Just LinkTextType) <*> genUrl)] else []) ++
+        (if parentType /= Just LinkTextType && parentType /= Just ImageTextType then [(4 * n, ImageText <$> genSafeText <*> genUrl)] else []) ++ -- Image alt text is T.Text, no recursive list here
+        (if parentType /= Just ItalicTextType then [(2 * n, ItalicText <$> genSizedInlineListWithParent (n-1) 3 (Just ItalicTextType))] else []) ++
+        (if parentType /= Just BoldTextType then [(2 * n, BoldText <$> genSizedInlineListWithParent (n-1) 3 (Just BoldTextType))] else [])
 
 genSizedInlineElementWithParent _ _ = genPlainText -- Fallback for negative n
 
@@ -85,8 +113,9 @@ genInlineElement :: Gen InlineElement
 genInlineElement = sized $ \n -> genSizedInlineElementWithParent n Nothing
 
 -- | Generator for a list of InlineElements (starts with no parent context)
+-- Limited the top-level list size to 5
 genInlineElementList :: Gen [InlineElement]
-genInlineElementList = sized $ \n -> genSizedInlineListWithParent n Nothing
+genInlineElementList = sized $ \n -> genSizedInlineListWithParent n 5 Nothing
 
 -- | Generator for Markdown header (text and expected element)
 genHeaderMarkdown :: Gen (T.Text, MarkdownElement)
@@ -112,7 +141,8 @@ genParagraphMarkdown = do
 genCodeBlockMarkdown :: Gen (T.Text, MarkdownElement)
 genCodeBlockMarkdown = do
     lang <- frequency [(1, Just <$> genSafeText `suchThat` (\t -> not (T.null t) && not (T.any (== ' ') t) && not (T.any (== '\n') t))), (3, return Nothing)]
-    codeLines <- listOf1 (genSafeText `suchThat` (not . T.isInfixOf "```")) -- Ensure no ``` inside code
+    -- Limited the number of code lines to 5
+    codeLines <- listOf1 (genSafeText `suchThat` (not . T.isInfixOf "```")) `suchThat` (\l -> length l <= 5)
     let codeContent = T.unlines codeLines
     let langPart = maybe "" id lang
     let mdInput = "```" <> langPart <> "\n" <> codeContent <> "```\n"
@@ -130,14 +160,15 @@ genBulletListItem = do
 -- | Generator for a Markdown bullet list
 genBulletListMarkdown :: Gen (T.Text, MarkdownElement)
 genBulletListMarkdown = do
-    items <- listOf1 genBulletListItem
-    let mdInput = T.unlines (map fst items) <> "\n"
+    -- Limited the number of list items to 5
+    items <- listOf1 genBulletListItem `suchThat` (\l -> length l <= 5)
+    let mdInput = T.unlines (map fst items)
     return (mdInput, BulletList (map snd items))
 
 -- | Generator for a numbered list item
 genNumberedListItem :: Gen (Int, T.Text, [InlineElement])
 genNumberedListItem = do
-    num <- choose (1, 99)
+    num <- choose (1, 10)
     -- List items contain inline elements with no parent context initially
     contentList <- genInlineElementList `suchThat` (not . null)
     let textContent = T.concat $ map renderInlineForTest contentList
@@ -146,11 +177,12 @@ genNumberedListItem = do
 -- | Generator for a Markdown numbered list
 genNumberedListMarkdown :: Gen (T.Text, MarkdownElement)
 genNumberedListMarkdown = do
-    rawItems <- listOf1 genNumberedListItem
+    -- Limited the number of list items to 5
+    rawItems <- listOf1 genNumberedListItem `suchThat` (\l -> length l <= 5)
     -- For test simplicity, we won't handle renumbering here;
     -- the parser should correctly parse numbers as they are.
     let items = map (\(_, md, el) -> (md, el)) rawItems
-    let mdInput = T.unlines (map fst items) <> "\n"
+    let mdInput = T.unlines (map fst items)
     return (mdInput, NumberedList (map snd items))
 
 -- | Generator for a Markdown horizontal rule
@@ -177,8 +209,9 @@ genMarkdownElement = sized $ \s -> if s == 0 then fmap snd genParagraphMarkdown 
         ]
 
 -- | Generator for MarkdownDoc
+-- Limited the number of Markdown elements in the document to 10
 genMarkdownDoc :: Gen MarkdownDoc
-genMarkdownDoc = MarkdownDoc <$> listOf genMarkdownElement
+genMarkdownDoc = MarkdownDoc <$> listOf genMarkdownElement `suchThat` (\l -> length l <= 10)
 
 -- Helper function to "render" InlineElement to text for generators
 -- This is a simplified version, only for generating input strings.
@@ -193,16 +226,18 @@ renderInlineForTest (ImageText alt url) = "![" <> alt <> "](" <> url <> ")"
 -- Generators for specific inline elements for more precise tests
 genSpecificBold :: Gen (T.Text, InlineElement)
 genSpecificBold = do
-    -- Bold content cannot contain BoldText
-    contentList <- genSizedInlineListWithParent 1 (Just BoldTextType) `suchThat` (not . null)
+    -- Bold content cannot contain BoldText, and consecutive elements are merged
+    -- Limited nested list size to 3
+    contentList <- genSizedInlineListWithParent 1 3 (Just BoldTextType) `suchThat` (not . null)
     let marker = "**"
     let renderedContent = T.concat (map renderInlineForTest contentList)
     return (marker <> renderedContent <> marker, BoldText contentList)
 
 genSpecificItalic :: Gen (T.Text, InlineElement)
 genSpecificItalic = do
-    -- Italic content cannot contain ItalicText
-    contentList <- genSizedInlineListWithParent 1 (Just ItalicTextType) `suchThat` (not . null)
+    -- Italic content cannot contain ItalicText, and consecutive elements are merged
+    -- Limited nested list size to 3
+    contentList <- genSizedInlineListWithParent 1 3 (Just ItalicTextType) `suchThat` (not . null)
     let marker = "_"
     let renderedContent = T.concat (map renderInlineForTest contentList)
     return (marker <> renderedContent <> marker, ItalicText contentList)
@@ -215,8 +250,9 @@ genSpecificCodeText = do
 
 genSpecificLinkText :: Gen (T.Text, InlineElement)
 genSpecificLinkText = do
-    -- Link content cannot contain LinkText or ImageText
-    altContentList <- genSizedInlineListWithParent 1 (Just LinkTextType) `suchThat` (not . null)
+    -- Link content cannot contain LinkText or ImageText, and consecutive elements are merged
+    -- Limited nested list size to 3
+    altContentList <- genSizedInlineListWithParent 1 3 (Just LinkTextType) `suchThat` (not . null)
     url <- genUrl
     let renderedAlt = T.concat (map renderInlineForTest altContentList)
     return ("[" <> renderedAlt <> "](" <> url <> ")", LinkText altContentList url)

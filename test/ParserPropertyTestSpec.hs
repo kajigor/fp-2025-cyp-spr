@@ -102,8 +102,11 @@ spec = do
         forAll genMarkdownDoc $ \doc@(MarkdownDoc elements) ->
           let rendered = T.concat (map renderMarkdownElementForTest elements)
            in case testParser parseMarkdownDoc rendered of
-                Right (MarkdownDoc parsedElements) -> length elements === length parsedElements
-                Left e -> counterexample (show e ++ "\nInput was:\n" ++ T.unpack rendered) False
+                Right (MarkdownDoc parsedElements) ->
+                    -- Added more logging here
+                    counterexample ("Generated Doc: " ++ show doc ++ "\nParsed Doc: " ++ show (MarkdownDoc parsedElements) ++ "\nRendered Input:\n" ++ T.unpack rendered) $
+                    length elements === length parsedElements
+                Left e -> counterexample (show e ++ "\nRendered Input:\n" ++ T.unpack rendered) False -- Added rendered input here too
 
     it "does not crash on arbitrary text input" $
       property $
@@ -114,9 +117,9 @@ spec = do
 renderMarkdownElementForTest :: MarkdownElement -> T.Text
 renderMarkdownElementForTest (Header lvl inlines) = T.replicate lvl "#" <> " " <> T.concat (map renderInlineForTest inlines) <> "\n"
 renderMarkdownElementForTest (Paragraph inlines) = T.concat (map renderInlineForTest inlines) <> "\n"
-renderMarkdownElementForTest (CodeBlock lang code) = "```" <> maybe "" (<> "\n") lang <> code <> "\n```\n"
-renderMarkdownElementForTest (BulletList items) = T.unlines (map (("* " <>) . T.concat . map renderInlineForTest) items) <> "\n"
-renderMarkdownElementForTest (NumberedList items) = T.unlines (zipWith (\i item -> T.pack (show i) <> ". " <> T.concat (map renderInlineForTest item)) [1 :: Int ..] items) <> "\n"
+renderMarkdownElementForTest (CodeBlock lang code) = "```" <>  maybe "" id lang <> "\n" <> code <> "\n```\n"
+renderMarkdownElementForTest (BulletList items) = T.unlines (map (("* " <>) . T.concat . map renderInlineForTest) items)
+renderMarkdownElementForTest (NumberedList items) = T.unlines (zipWith (\i item -> T.pack (show i) <> ". " <> T.concat (map renderInlineForTest item)) [1 :: Int ..] items)
 renderMarkdownElementForTest HorizontalRule = "---\n"
 renderMarkdownElementForTest EmptyLine = "\n"
 renderMarkdownElementForTest (BlockQuote _els) = "> TODO BlockQuote render for test\n"

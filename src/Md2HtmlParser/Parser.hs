@@ -5,7 +5,7 @@ module Md2HtmlParser.Parser
     MarkdownElement (..),
     InlineElement (..),
     parseInlineElement,
-    -- And helpers    
+    -- And helpers
     parseImageText,
     parseCodeText,
     parseLinkText,
@@ -35,9 +35,9 @@ import Md2HtmlParser.Parser.Utils
     indented,
     parens,
     square,
+    takeUntilAllowedInLink,
     takeUntilSpecialOrNewline,
     takeUntilSpecialOrNewlineOrEmpty,
-    takeUntilAllowedInLink,
     textString,
   )
 import System.IO.Unsafe (unsafePerformIO)
@@ -47,6 +47,7 @@ import Text.Megaparsec
     eof,
     getInput,
     many,
+    manyTill,
     optional,
     satisfy,
     some,
@@ -54,12 +55,11 @@ import Text.Megaparsec
     try,
     (<?>),
     (<|>),
-    manyTill,
   )
 import Text.Megaparsec.Char (char, string)
 
 -- | Logs parser execution and returns the result
-withLogs :: Show a => String -> Parser a -> Parser a
+withLogs :: (Show a) => String -> Parser a -> Parser a
 withLogs name parser = do
   -- Get a preview of the current input before parsing
   inputPreview <- showCurrentInput
@@ -112,8 +112,9 @@ data MarkdownElement
   deriving (Show, Eq)
 
 parsePlainText :: Parser InlineElement
-parsePlainText = withLogs "parsePlainText" $
-  PlainText <$> takeUntilSpecialOrNewline
+parsePlainText =
+  withLogs "parsePlainText" $
+    PlainText <$> takeUntilSpecialOrNewline
 
 parseItalic :: Parser InlineElement
 parseItalic = withLogs "parseItalic" $ do
@@ -125,7 +126,7 @@ parseItalic = withLogs "parseItalic" $ do
 parseBold :: Parser InlineElement
 parseBold = withLogs "parseBold" $ do
   start <- try (textString "__") <|> try (textString "**")
-  content <- try (some parseInlineElement)
+  content <- try (some parseInlineNoBold)
   _ <- textString (Text.unpack start)
   return $ BoldText content
 
@@ -149,16 +150,39 @@ parseImageText = withLogs "parseImageText" $ do
   url <- parens takeUntilAllowedInLink
   return $ ImageText text url
 
+parseInlineNoBold :: Parser InlineElement
+parseInlineNoBold =
+  withLogs "parseInlineElement" $
+    choice
+      [ parseImageText,
+        parseLinkText,
+        try parseCodeText,
+        try parseItalic,
+        parsePlainText
+      ]
+
+parseInlineNoItalic :: Parser InlineElement
+parseInlineNoItalic =
+  withLogs "parseInlineElement" $
+    choice
+      [ parseImageText,
+        parseLinkText,
+        try parseCodeText,
+        try parseBold,
+        parsePlainText
+      ]
+
 parseInlineElement :: Parser InlineElement
-parseInlineElement = withLogs "parseInlineElement" $
-  choice
-    [ parseImageText,
-      parseLinkText,
-      try parseCodeText,
-      try parseBold,
-      try parseItalic,
-      parsePlainText
-    ]
+parseInlineElement =
+  withLogs "parseInlineElement" $
+    choice
+      [ parseImageText,
+        parseLinkText,
+        try parseCodeText,
+        try parseBold,
+        try parseItalic,
+        parsePlainText
+      ]
 
 parseMdHeader :: Parser MarkdownElement
 parseMdHeader = withLogs "parseMdHeader" $ do
@@ -204,7 +228,7 @@ parseBulletList :: Parser MarkdownElement
 parseBulletList = withLogs "parseBulletList" $ do
   level <- length <$> many (char ' ')
   firstItem <- parseBulletListInlineElem
-  restItems <-  many $ try $ do
+  restItems <- many $ try $ do
     _ <- endOfLine
     indented level parseBulletListInlineElem
   _ <- endOfLine *> pure () <|> eof
