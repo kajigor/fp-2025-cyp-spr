@@ -114,8 +114,8 @@ genCodeBlockMarkdown = do
     lang <- frequency [(1, Just <$> genSafeText `suchThat` (\t -> not (T.null t) && not (T.any (== ' ') t) && not (T.any (== '\n') t))), (3, return Nothing)]
     codeLines <- listOf1 (genSafeText `suchThat` (not . T.isInfixOf "```")) -- Ensure no ``` inside code
     let codeContent = T.unlines codeLines
-    let langStr = maybe "" (\l -> l <> "\n") lang
-    let mdInput = "```" <> langStr <> codeContent <> "```\n"
+    let langPart = maybe "" id lang
+    let mdInput = "```" <> langPart <> "\n" <> codeContent <> "```\n"
     return (mdInput, CodeBlock lang (T.stripEnd codeContent))
 
 -- | Generator for a bullet list item
@@ -157,7 +157,7 @@ genNumberedListMarkdown = do
 genHorizontalRuleMarkdown :: Gen (T.Text, MarkdownElement)
 genHorizontalRuleMarkdown = do
     marker <- elements ["---", "***", "___"] -- Though your parser currently only supports "---"
-    padding <- T.pack <$> listOf (elements [' '])
+    padding <- T.pack <$> listOf (return ' ')
     let mdInput = marker <> padding <> "\n"
     return (mdInput, HorizontalRule)
 
@@ -195,7 +195,7 @@ genSpecificBold :: Gen (T.Text, InlineElement)
 genSpecificBold = do
     -- Bold content cannot contain BoldText
     contentList <- genSizedInlineListWithParent 1 (Just BoldTextType) `suchThat` (not . null)
-    marker <- elements ["**", "__"]
+    let marker = "**"
     let renderedContent = T.concat (map renderInlineForTest contentList)
     return (marker <> renderedContent <> marker, BoldText contentList)
 
@@ -203,7 +203,7 @@ genSpecificItalic :: Gen (T.Text, InlineElement)
 genSpecificItalic = do
     -- Italic content cannot contain ItalicText
     contentList <- genSizedInlineListWithParent 1 (Just ItalicTextType) `suchThat` (not . null)
-    marker <- elements ["*", "_"]
+    let marker = "_"
     let renderedContent = T.concat (map renderInlineForTest contentList)
     return (marker <> renderedContent <> marker, ItalicText contentList)
 

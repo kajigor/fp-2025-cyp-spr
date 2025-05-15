@@ -230,7 +230,8 @@ parseNumberedList = withLogs "parseNumberedList" $ do
 
 parseHorizontalRule :: Parser MarkdownElement
 parseHorizontalRule = withLogs "parseHorizontalRule" $ do
-  _ <- string (Text.pack "---")
+  _ <- string (Text.pack "---") <|> string (Text.pack "***") <|> string (Text.pack "___")
+  _ <- many $ char ' '
   _ <- endOfLine *> pure () <|> eof
   return HorizontalRule
 
