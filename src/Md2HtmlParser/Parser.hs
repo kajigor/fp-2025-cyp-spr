@@ -163,7 +163,7 @@ parseInlineElement = withLogs "parseInlineElement" $
 parseMdHeader :: Parser MarkdownElement
 parseMdHeader = withLogs "parseMdHeader" $ do
   level <- length <$> some (char '#')
-  _ <- some (char ' ')
+  _ <- char ' '
   content <- many parseInlineElement
   _ <- endOfLine *> pure () <|> eof
   return $ Header level content

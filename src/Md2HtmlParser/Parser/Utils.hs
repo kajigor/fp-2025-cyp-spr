@@ -201,7 +201,7 @@ takeUntilSpecialOrNewline = takeWhileP1 (\c -> not (isSpecialChar c || c == '\n'
 
 -- | Take symbols allowed inside links
 takeUntilAllowedInLink :: Parser Text
-takeUntilAllowedInLink = takeWhileP1 (\c -> not (c `elem` ("`[](){}<>\"\'|^ " :: String) || c == '\n'))
+takeUntilAllowedInLink = takeWhileP1 (\c -> not (c `elem` ("`[](){}<>\"'|^ " :: String) || c == '\n'))
                           <?> "text without special characters or newlines inside link"
 
 -- | Take text until first special character or newline
