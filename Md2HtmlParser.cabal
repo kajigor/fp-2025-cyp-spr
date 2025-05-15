@@ -81,11 +81,13 @@ test-suite Md2HtmlParser-test
   main-is: Spec.hs
   other-modules:
       CodeBlockSpec
+      GeneratorUtil
       HTMLSpec
       InlineElementSpec
       LinkAndImageSpec
       ListParsingSpec
       MarkdownDocSpec
+      ParserPropertyTestSpec
       Paths_Md2HtmlParser
   autogen-modules:
       Paths_Md2HtmlParser
@@ -100,7 +102,8 @@ test-suite Md2HtmlParser-test
     , directory
     , filepath
     , hspec >=2.7
-    , megaparsec >=9.0.0
+    , hspec-megaparsec
+    , megaparsec
     , mtl
     , optparse-applicative >=0.15
     , parsec

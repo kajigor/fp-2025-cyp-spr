@@ -5,6 +5,7 @@ module Md2HtmlParser.Parser
     MarkdownElement (..),
     InlineElement (..),
     parseInlineElement,
+    -- And helpers    
     parseImageText,
     parseCodeText,
     parseLinkText,
@@ -12,6 +13,14 @@ module Md2HtmlParser.Parser
     parseBold,
     parseItalic,
     parseNumberedList,
+    parseMdHeader,
+    parseParagraph,
+    parseCodeBlock,
+    parseBulletList,
+    parseBulletListInlineElem,
+    parseNumberedListInlineElem,
+    parseHorizontalRule,
+    parseEmptyLine,
   )
 where
 

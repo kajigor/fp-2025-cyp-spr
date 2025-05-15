@@ -74,6 +74,13 @@ tests:
     dependencies:
     - Md2HtmlParser
     - hspec >= 2.7
+    - hspec-megaparsec
+    - megaparsec
     - parsec
     - text
     - QuickCheck
+    - containers
+    - directory
+    - filepath
+    - mtl
+    - transformers
