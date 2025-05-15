@@ -184,7 +184,7 @@ genMarkdownDoc = MarkdownDoc <$> listOf genMarkdownElement
 -- This is a simplified version, only for generating input strings.
 renderInlineForTest :: InlineElement -> T.Text
 renderInlineForTest (PlainText t) = t
-renderInlineForTest (ItalicText es) = "*" <> T.concat (map renderInlineForTest es) <> "*"
+renderInlineForTest (ItalicText es) = "_" <> T.concat (map renderInlineForTest es) <> "_"
 renderInlineForTest (BoldText es) = "**" <> T.concat (map renderInlineForTest es) <> "**"
 renderInlineForTest (CodeText t) = "`" <> t <> "`"
 renderInlineForTest (LinkText es url) = "[" <> T.concat (map renderInlineForTest es) <> "](" <> url <> ")"
