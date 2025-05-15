@@ -90,8 +90,7 @@ data InlineElement
   | BoldText [InlineElement]
   | CodeText Text
   | LinkText [InlineElement] Text
-  | -- | Image with alt text and URL
-    ImageText Text Text
+  | ImageText Text Text
   deriving (Show, Eq)
 
 -- | Different elements that can appear in a markdown document
@@ -126,7 +125,7 @@ parseItalic = withLogs "parseItalic" $ do
 parseBold :: Parser InlineElement
 parseBold = withLogs "parseBold" $ do
   start <- try (textString "__") <|> try (textString "**")
-  content <- try (some parseInlineNoBold)
+  content <- try (some parseInlineElement)
   _ <- textString (Text.unpack start)
   return $ BoldText content
 

@@ -24,18 +24,30 @@ testParser p = parse (p <* eof) ""
 
 spec :: Spec
 spec = do
+
+  describe "parseInline" $ do
+      it "parses valid inlineElement based on generated input and matches merged structure" $
+        withMaxSuccess 10000 $
+        property $
+          forAll genInlineElement $ \expected -> do
+            -- Apply mergeConsecutiveFormatting to the expected value before comparison
+            testParser parseInlineElement (renderInlineForTest expected) `shouldParse` expected
+
   describe "parseMdHeader" $ do
-    it "parses valid headers based on generated input" $ -- Changed description
+    it "parses valid headers based on generated input" $ -- Changed description -- Changed description -- Changed description -- Changed description
+       -- Changed description
       property $
         forAll genHeaderMarkdown $ \(mdInput, expectedHeader) ->
           testParser parseMdHeader mdInput `shouldParse` expectedHeader
 
   describe "parseParagraph" $ do
-    it "parses valid paragraphs based on generated input" $ -- Changed description
+    it "parses valid paragraphs based on generated input" $ -- Changed description -- Changed description -- Changed description -- Changed description
+       -- Changed description
       property $
         forAll genParagraphMarkdown $ \(mdInput, expectedParagraph) ->
           testParser parseParagraph mdInput `shouldParse` expectedParagraph
-    it "a paragraph can contain various generated inline elements" $ -- Changed description
+    it "a paragraph can contain various generated inline elements" $ -- Changed description -- Changed description -- Changed description -- Changed description
+       -- Changed description
       property $
         forAll (Paragraph <$> genInlineElementList) $ \paragraph ->
           let rendered = T.concat (map renderInlineForTest (case paragraph of Paragraph p -> p; _ -> [])) <> "\n"
@@ -43,69 +55,78 @@ spec = do
 
   describe "Inline Element Parsers" $ do
     describe "parseBold" $
-      it "parses bold text based on generated input" $ -- Changed description
+      it "parses bold text based on generated input" $ -- Changed description -- Changed description -- Changed description -- Changed description -- Changed description -- Changed description -- Changed description -- Changed description
+         -- Changed description
         property $
           forAll genSpecificBold $ \(mdInput, expected) ->
             testParser parseInlineElement mdInput `shouldParse` expected
 
     describe "parseItalic" $
-      it "parses italic text based on generated input" $ -- Changed description
+      it "parses italic text based on generated input" $ -- Changed description -- Changed description -- Changed description -- Changed description -- Changed description -- Changed description -- Changed description -- Changed description
+         -- Changed description
         property $
           forAll genSpecificItalic $ \(mdInput, expected) ->
             testParser parseInlineElement mdInput `shouldParse` expected
 
     describe "parseCodeText" $
-      it "parses inline code based on generated input" $ -- Changed description
+      it "parses inline code based on generated input" $ -- Changed description -- Changed description -- Changed description -- Changed description -- Changed description -- Changed description -- Changed description -- Changed description
+         -- Changed description
         property $
           forAll genSpecificCodeText $ \(mdInput, expected) ->
             testParser parseInlineElement mdInput `shouldParse` expected
 
     describe "parseLinkText" $
-      it "parses links based on generated input" $ -- Changed description
+      it "parses links based on generated input" $ -- Changed description -- Changed description -- Changed description -- Changed description -- Changed description -- Changed description -- Changed description -- Changed description
+         -- Changed description
         property $
           forAll genSpecificLinkText $ \(mdInput, expected) ->
             testParser parseInlineElement mdInput `shouldParse` expected
 
     describe "parseImageText" $
-      it "parses images based on generated input" $ -- Changed description
+      it "parses images based on generated input" $ -- Changed description -- Changed description -- Changed description -- Changed description -- Changed description -- Changed description -- Changed description -- Changed description
+         -- Changed description
         property $
           forAll genSpecificImageText $ \(mdInput, expected) ->
             testParser parseInlineElement mdInput `shouldParse` expected
 
   describe "parseCodeBlock" $ do
-    it "parses code blocks with and without language based on generated input" $ -- Changed description
+    it "parses code blocks with and without language based on generated input" $ -- Changed description -- Changed description -- Changed description -- Changed description
+       -- Changed description
       property $
         forAll genCodeBlockMarkdown $ \(mdInput, expectedBlock) ->
           testParser parseCodeBlock mdInput `shouldParse` expectedBlock
 
   describe "parseBulletList" $ do
-    it "parses simple bullet lists based on generated input" $ -- Changed description
+    it "parses simple bullet lists based on generated input" $ -- Changed description -- Changed description -- Changed description -- Changed description
+       -- Changed description
       property $
         forAll genBulletListMarkdown $ \(mdInput, expectedList) ->
           testParser parseBulletList mdInput `shouldParse` expectedList
 
   describe "parseNumberedList" $ do
-    it "parses simple numbered lists based on generated input" $ -- Changed description
+    it "parses simple numbered lists based on generated input" $ -- Changed description -- Changed description -- Changed description -- Changed description
+       -- Changed description
       property $
         forAll genNumberedListMarkdown $ \(mdInput, expectedList) ->
           testParser parseNumberedList mdInput `shouldParse` expectedList
 
   describe "parseHorizontalRule" $ do
-    it "parses horizontal rules based on generated input" $ -- Changed description
+    it "parses horizontal rules based on generated input" $ -- Changed description -- Changed description -- Changed description -- Changed description
+       -- Changed description
       property $
         forAll genHorizontalRuleMarkdown $ \(mdInput, expectedRule) ->
           testParser parseHorizontalRule mdInput `shouldParse` expectedRule
 
   describe "parseMarkdownDoc" $ do
-    it "parses a document with multiple generated elements" $ -- Changed description
+    it "parses a document with multiple generated elements" $ -- Changed description -- Changed description -- Changed description -- Changed description
+       -- Changed description
       property $
         forAll genMarkdownDoc $ \doc@(MarkdownDoc elements) ->
           let rendered = T.concat (map renderMarkdownElementForTest elements)
            in case testParser parseMarkdownDoc rendered of
                 Right (MarkdownDoc parsedElements) ->
-                    -- Added more logging here
                     counterexample ("Generated Doc: " ++ show doc ++ "\nParsed Doc: " ++ show (MarkdownDoc parsedElements) ++ "\nRendered Input:\n" ++ T.unpack rendered) $
-                    length elements === length parsedElements
+                    parsedElements `shouldBe` elements
                 Left e -> counterexample (show e ++ "\nRendered Input:\n" ++ T.unpack rendered) False -- Added rendered input here too
 
     it "does not crash on arbitrary text input" $

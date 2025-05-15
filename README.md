@@ -43,3 +43,5 @@ stack run Md2HtmlParser-exe -- -h
 ### Running the Application
 
 You can run the parser directly with Cabal:
+
+**Bodl1 *Italic **Inner Bold** Italic2* Bold2**
