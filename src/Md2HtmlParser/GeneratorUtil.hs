@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module GeneratorUtil where
+module Md2HtmlParser.GeneratorUtil where
 
 -- Assuming this is a local module or from a dependency
 import Control.Monad (replicateM)
@@ -9,6 +9,7 @@ import Data.Maybe (isNothing)
 import qualified Data.Text as T
 import Md2HtmlParser.Parser (InlineElement (..), MarkdownDoc (..), MarkdownElement (..))
 import Test.QuickCheck
+
 
 -- | Data type to represent the type of InlineElement for context tracking
 data InlineElementType = PlainTextType | ItalicTextType | BoldTextType | CodeTextType | LinkTextType | ImageTextType deriving (Eq, Show)
@@ -83,12 +84,8 @@ genSizedInlineListWithParent n listSize parentType = do
 
 genNotOptimizeSizedInlineListWithParent :: Int -> Int -> Maybe InlineElementType -> Gen [InlineElement]
 genNotOptimizeSizedInlineListWithParent n listSize parentType = do
-  -- Generate between 1 and listSize elements, or fewer if size is small
-  k <- choose (1, max 1 (min listSize (n + 1))) -- Limit list size based on depth and a max size
-  -- Generate the raw list using genSizedInlineElementWithParent
-  rawList <- vectorOf k (genSizedInlineElementWithParent n parentType)
-  -- Apply the recursive merging function to the generated list
-  return rawList
+  k <- choose (2, max 1 (min listSize (n + 1)))
+  vectorOf k (genSizedInlineElementWithParent n parentType)
 
 -- | Generator for InlineElement with recursion depth control and parent context
 genSizedInlineElementWithParent :: Int -> Maybe InlineElementType -> Gen InlineElement
@@ -107,7 +104,7 @@ genSizedInlineElementWithParent _ _ = genPlainText
 -- | Main generator for InlineElement (starts with no parent context)
 genInlineElement :: Gen InlineElement
 genInlineElement = sized $ \n -> do
-  rawElem <- genSizedInlineElementWithParent (min 3 n) Nothing
+  rawElem <- genSizedInlineElementWithParent (min 10 n) Nothing
   let mergedList = mergeConsecutiveFormatting [rawElem]
   case mergedList of
     (firstElem : _) -> return firstElem
@@ -115,7 +112,7 @@ genInlineElement = sized $ \n -> do
 
 genInlineElementList :: Gen [InlineElement]
 genInlineElementList = sized $ \n -> do
-  rawList <- genNotOptimizeSizedInlineListWithParent (min 5 n) 5 Nothing
+  rawList <- genNotOptimizeSizedInlineListWithParent (min 20 n) 5 Nothing
   return $ mergeConsecutiveFormatting rawList
 
 -- | Generator for Markdown header (text and expected element)
@@ -239,6 +236,27 @@ genMarkdownDoc = do
   let mergedElements = mergeConsecutiveMarkdownElements rawElements
   return $ MarkdownDoc mergedElements
 
+genMarkdownDocWithSizeAndDepth :: Int -> Int -> Gen MarkdownDoc
+genMarkdownDocWithSizeAndDepth size depth = do
+  rawElements <- vectorOf size (genMarkdownElementWithDepth depth)
+  let mergedElements = mergeConsecutiveMarkdownElements rawElements
+  return $ MarkdownDoc mergedElements
+
+-- Helper to generate MarkdownElement with controlled depth
+genMarkdownElementWithDepth :: Int -> Gen MarkdownElement
+genMarkdownElementWithDepth d =
+  frequency
+    [ (3, Header <$> choose (1, 6) <*> genNotOptimizeSizedInlineListWithParent d 4 Nothing)
+    , (5, Paragraph <$> genNotOptimizeSizedInlineListWithParent d 5 Nothing)
+    , (2, do
+        lang <- elements [Nothing, Just "haskell", Just "python"]
+        CodeBlock lang <$> genSafeText)
+    , (2, BulletList <$> listOf1 (genNotOptimizeSizedInlineListWithParent d 3 Nothing))
+    , (2, NumberedList <$> listOf1 (genNotOptimizeSizedInlineListWithParent d 3 Nothing))
+    , (1, return HorizontalRule)
+    , (1, return EmptyLine)
+    ]
+
 -- Helper function to "render" InlineElement to text for generators
 renderInlineForTest :: InlineElement -> T.Text
 renderInlineForTest (PlainText t) = t
@@ -281,3 +299,13 @@ genSpecificImageText = do
   alt <- genSafeText `suchThat` (not . T.null)
   url <- genUrl
   return ("![" <> alt <> "](" <> url <> ")", ImageText alt url)
+
+renderMarkdownElementForTest :: MarkdownElement -> T.Text
+renderMarkdownElementForTest (Header lvl inlines) = T.replicate lvl "#" <> " " <> T.concat (map renderInlineForTest inlines) <> "\n"
+renderMarkdownElementForTest (Paragraph inlines) = T.concat (map renderInlineForTest inlines) <> "\n"
+renderMarkdownElementForTest (CodeBlock lang code) = "```" <> maybe "" id lang <> "\n" <> code <> "\n```\n"
+renderMarkdownElementForTest (BulletList items) = T.unlines (map (("* " <>) . T.concat . map renderInlineForTest) items)
+renderMarkdownElementForTest (NumberedList items) = T.unlines (zipWith (\i item -> T.pack (show i) <> ". " <> T.concat (map renderInlineForTest item)) [1 :: Int ..] items)
+renderMarkdownElementForTest HorizontalRule = "---\n"
+renderMarkdownElementForTest EmptyLine = "\n"
+renderMarkdownElementForTest (BlockQuote _els) = "> TODO BlockQuote render for test\n"

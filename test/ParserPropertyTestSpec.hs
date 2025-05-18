@@ -6,21 +6,27 @@
 module ParserPropertyTestSpec (spec) where
 
 import qualified Data.Text as T
-import GeneratorUtil
+import Md2HtmlParser.GeneratorUtil
 import Md2HtmlParser.Parser
 import Md2HtmlParser.Parser.Utils
+import Md2HtmlParser.Metrics (emptyMetrics)
 import Test.Hspec
 import Test.Hspec.Megaparsec
 import Test.QuickCheck
 import Text.Megaparsec
 import Text.Megaparsec.Error (ParseErrorBundle, ShowErrorComponent (..))
+import Control.Monad.State.Strict (runState)
+import Md2HtmlParser.Metrics (Metrics(..))
 
 instance ShowErrorComponent String where
   showErrorComponent = id
   errorComponentLen = length
 
 testParser :: Parser a -> T.Text -> Either (ParseErrorBundle T.Text String) a
-testParser p = parse (p <* eof) ""
+testParser p input =
+  let parserAction = runParserT (p <* eof) "" input
+      (result, _) = runState parserAction emptyMetrics
+  in result
 
 spec :: Spec
 spec = do
@@ -136,12 +142,25 @@ spec = do
             Left _ -> property True
             Right _ -> property True
 
-renderMarkdownElementForTest :: MarkdownElement -> T.Text
-renderMarkdownElementForTest (Header lvl inlines) = T.replicate lvl "#" <> " " <> T.concat (map renderInlineForTest inlines) <> "\n"
-renderMarkdownElementForTest (Paragraph inlines) = T.concat (map renderInlineForTest inlines) <> "\n"
-renderMarkdownElementForTest (CodeBlock lang code) = "```" <> maybe "" id lang <> "\n" <> code <> "\n```\n"
-renderMarkdownElementForTest (BulletList items) = T.unlines (map (("* " <>) . T.concat . map renderInlineForTest) items)
-renderMarkdownElementForTest (NumberedList items) = T.unlines (zipWith (\i item -> T.pack (show i) <> ". " <> T.concat (map renderInlineForTest item)) [1 :: Int ..] items)
-renderMarkdownElementForTest HorizontalRule = "---\n"
-renderMarkdownElementForTest EmptyLine = "\n"
-renderMarkdownElementForTest (BlockQuote _els) = "> TODO BlockQuote render for test\n"
+    describe "Metrics Profiling" $ do
+      it "prints parser metrics on generated markdown" $
+        withMaxSuccess 1 $  -- или больше, если хочешь
+          property $
+            forAll genMarkdownDoc $ \doc@(MarkdownDoc elements) ->
+              let markdown = T.concat (map renderMarkdownElementForTest elements)
+                  parserAction = runParserT parseMarkdownDoc "" markdown
+                  (result, metrics) = runState parserAction emptyMetrics
+              in case result of
+                Right _ ->
+                  counterexample
+                    ("Parsed successfully!\n" ++
+                     "Markdown size: " ++ show (T.length markdown) ++ "\n" ++
+                     "Char calls: " ++ show (charCalls metrics) ++ "\n" ++
+                     "Ratio (charCalls / size): " ++ show (fromIntegral (charCalls metrics) / fromIntegral (max 1 (T.length markdown)) :: Double) ++ "\n" ++
+                     "Rendered Markdown:\n" ++ T.unpack markdown)
+                    True
+                Left e ->
+                  counterexample
+                    ("Parse error:\n" ++ show e ++ "\nInput:\n" ++ T.unpack markdown)
+                    False
+

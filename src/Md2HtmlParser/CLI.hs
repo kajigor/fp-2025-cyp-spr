@@ -10,18 +10,21 @@ import Options.Applicative
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import System.Directory (doesFileExist)
-import System.IO (hPutStrLn, stderr, stdin, stdout)
+import System.IO (hPutStrLn, stderr)
 import System.Exit (exitFailure)
 import Control.Monad (when)
+import Text.Printf (printf)
 
 import Md2HtmlParser (processMarkdown)
 import Md2HtmlParser.Logger (enableParserDebugging)
+import Md2HtmlParser.Metrics (Metrics(..), emptyMetrics, charCalls, resetCharCallCounter, getCharCallCount)
 
 -- | Command line options
 data Options = Options
   { optInput    :: Maybe FilePath  -- ^ Input file path (Nothing means stdin)
   , optOutput   :: Maybe FilePath  -- ^ Output file path (Nothing means stdout)
-  , optVerbose  :: Bool            -- ^ Verbose output
+  , optVerbose  :: Bool            -- ^ Verbose output (enables parser debugging logs)
+  , optMetrics  :: Bool            -- ^ Show performance metrics
   } deriving (Show, Eq)
 
 -- | Parser for input file option
@@ -47,12 +50,20 @@ verboseParser = switch
   <> short 'v'
   <> help "Enable verbose output")
 
+-- | Parser for metrics flag
+metricsParser :: Parser Bool
+metricsParser = switch
+  ( long "metrics"
+  <> short 'm'
+  <> help "Show parser performance metrics (char calls / document size)")
+
 -- | Combined parser for all options
 optionsParser :: Parser Options
 optionsParser = Options
   <$> inputParser
   <*> outputParser
   <*> verboseParser
+  <*> metricsParser
 
 -- | Parse command-line arguments
 parseOptions :: IO Options
@@ -60,7 +71,7 @@ parseOptions = execParser opts
   where
     opts = info (optionsParser <**> helper)
       ( fullDesc
-      <> progDesc "Convert Markdown to HTML"
+      <> progDesc "Convert Markdown to HTML. Optionally shows parser performance metrics."
       <> header "Md2HtmlParser - a markdown to HTML converter")
 
 -- | Log a message if verbose mode is enabled
@@ -103,19 +114,46 @@ run :: Options -> IO ()
 run opts = do
   -- Enable debugging if verbose mode is on
   enableParserDebugging (optVerbose opts)
-  
-  -- Log program start
+
   logMessage (optVerbose opts) "Starting Markdown to HTML conversion"
-  
-  -- Read input
+
   markdownText <- readInput opts
   
-  -- Process markdown to HTML
-  logMessage (optVerbose opts) "Converting Markdown to HTML"
-  let htmlOutput = processMarkdown markdownText
+  -- Reset char call counter before parsing/processing
+  resetCharCallCounter
+
+  logMessage (optVerbose opts) "Converting Markdown to HTML..."
+  let (htmlOutput, metrics) = processMarkdown markdownText
   
-  -- Write output
+--   Get char call count after processing
+--  charCalls <- getCharCallCount
+
   writeOutput opts htmlOutput
-  
+
   -- Log completion
   logMessage (optVerbose opts) "Conversion completed successfully"
+
+  let Metrics { charCalls = calls } = metrics
+
+--  -- If metrics flag is enabled, calculate and print metrics
+--  when (optMetrics opts) $ do
+--    let docSize = T.length markdownText
+--    putStrLn "\n--- Parser Performance Metrics ---"
+--    putStrLn $ "Total 'char' function calls: " ++ show charCalls
+--    putStrLn $ "Document size (characters): " ++ show docSize
+--    if docSize > 0
+--        then do
+--            let metricValue = fromIntegral charCalls / fromIntegral docSize :: Double
+--            printf "Metric (char calls / document size): %.4f\n" metricValue
+--        else when (charCalls > 0) $ -- Handle empty doc case
+--            putStrLn "Metric: Document is empty, but char calls were made (e.g., parsing EOF)."
+--    putStrLn "----------------------------------"
+
+  when (optMetrics opts) $
+    do
+      putStrLn "--- Parser Performance Metrics ---"
+      putStrLn $ "Total 'char' function calls: " ++ show calls
+      putStrLn $ "Document size (characters): " ++ show (T.length markdownText)
+      putStrLn $ "Metric (char calls / document size): " ++ show (fromIntegral calls / fromIntegral (T.length markdownText) :: Double)
+      putStrLn "----------------------------------"
+

@@ -130,7 +130,7 @@ spec = do
             T.pack "```"
             ]
       print markdown
-      let html = processMarkdown markdown
+      let (html, _) = processMarkdown markdown
       putStrLn $ "Generated HTML: " ++ T.unpack html
       print html
       T.isInfixOf (T.pack "<h1>Header</h1>") html `shouldBe` True
@@ -140,7 +140,7 @@ spec = do
   
     it "properly escapes HTML in content" $ do
       let markdown = T.pack "This has <script> tags & special \"characters\""
-      let html = processMarkdown markdown
+      let (html, _) = processMarkdown markdown
       T.isInfixOf (T.pack "&lt;script&gt;") html `shouldBe` True
       T.isInfixOf (T.pack "&amp;") html `shouldBe` True
       T.isInfixOf (T.pack "&quot;characters&quot;") html `shouldBe` True

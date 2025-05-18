@@ -33,6 +33,8 @@ library
       Md2HtmlParser.HTML
       Md2HtmlParser.CLI
       Md2HtmlParser.Logger
+      Md2HtmlParser.Metrics
+      Md2HtmlParser.GeneratorUtil
   other-modules:
       Paths_Md2HtmlParser
   autogen-modules:
@@ -41,15 +43,16 @@ library
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
-      base >=4.7 && <5
+      QuickCheck
+    , base
     , containers
     , directory
     , filepath
-    , megaparsec >=9.0.0
+    , megaparsec
     , mtl
-    , optparse-applicative >=0.15
-    , parsec >=3.1.14
-    , text >=1.2
+    , optparse-applicative
+    , parsec
+    , text
     , transformers
   default-language: Haskell2010
 
@@ -64,6 +67,7 @@ executable Md2HtmlParser-exe
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       Md2HtmlParser
+    , QuickCheck
     , base >=4.7 && <5
     , containers
     , directory
@@ -76,12 +80,35 @@ executable Md2HtmlParser-exe
     , transformers
   default-language: Haskell2010
 
+executable metrics-one-run
+  main-is: Main.hs
+  other-modules:
+      Paths_Md2HtmlParser
+  autogen-modules:
+      Paths_Md2HtmlParser
+  hs-source-dirs:
+      metrics-one-run
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wall
+  build-depends:
+      Md2HtmlParser
+    , QuickCheck
+    , base
+    , containers
+    , directory
+    , filepath
+    , megaparsec
+    , mtl
+    , optparse-applicative >=0.15
+    , parsec >=3.1.14
+    , text
+    , transformers
+  default-language: Haskell2010
+
 test-suite Md2HtmlParser-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
       CodeBlockSpec
-      GeneratorUtil
       HTMLSpec
       InlineElementSpec
       LinkAndImageSpec

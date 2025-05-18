@@ -11,13 +11,17 @@ module Md2HtmlParser
 
 import Md2HtmlParser.Parser (parseMarkdownElement, parseMarkdownDoc, MarkdownDoc(..))
 import Md2HtmlParser.HTML (markdownToHtml, renderHtml, HtmlDoc(..))
+import Md2HtmlParser.Metrics
+import Control.Monad.State.Strict
 import qualified Data.Text as T
-import qualified Text.Megaparsec
+import Text.Megaparsec (runParserT)
 
--- | Process markdown text to HTML
-processMarkdown :: T.Text -> T.Text
-processMarkdown markdown = 
-  case Text.Megaparsec.parse parseMarkdownDoc "" markdown of
-    Left err -> T.pack $ "Error parsing markdown: " ++ show err
-    Right doc -> renderHtml $ markdownToHtml doc
 
+
+processMarkdown :: T.Text -> (T.Text, Metrics)
+processMarkdown markdown =
+  let parserAction = runParserT parseMarkdownDoc "" markdown
+      (result, finalMetrics) = runState parserAction emptyMetrics
+  in case result of
+       Left err -> (T.pack $ "Error parsing markdown:\n" ++ show err, finalMetrics)
+       Right doc -> (renderHtml $ markdownToHtml doc, finalMetrics)

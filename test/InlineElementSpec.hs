@@ -1,38 +1,45 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
 
-module InlineElementSpec (spec) where
+module InlineElementSpec where
 
 import Test.Hspec
 import qualified Data.Text as T
 import Text.Megaparsec (parse, eof)
 import Md2HtmlParser.Parser
 import Md2HtmlParser.Parser.Utils (Parser)
+import Control.Monad.State.Strict (runState)
+import Text.Megaparsec (runParserT)
+import Md2HtmlParser.Metrics (emptyMetrics)
 
 -- Helper to handle parsing results and throw proper test failures
 parseMdOrFail :: Parser a -> T.Text -> IO a
 parseMdOrFail parser input =
-  case parse (parser <* eof) "" input of
-    Right result -> return result
-    Left err -> expectationFailure ("Failed to parse: " ++ show err) >> undefined
+  let parserAction = runParserT (parser <* eof) "" input
+      (result, _) = runState parserAction emptyMetrics
+  in case result of
+       Right x -> return x
+       Left err -> expectationFailure ("Failed to parse: " ++ show err) >> undefined
 
 -- Helper to check if parsing fails as expected
 shouldFailToParse :: Show a => Parser a -> T.Text -> Expectation
 shouldFailToParse parser input =
-  case parse parser "" input of
-    Right result -> expectationFailure $ 
-      "Expected parsing to fail, but succeeded with result: " ++ show result
-    Left _ -> return () -- Error is expected, so test passes
+  let parserAction = runParserT parser "" input
+      (result, _) = runState parserAction emptyMetrics
+  in case result of
+       Right result -> expectationFailure $
+         "Expected parsing to fail, but succeeded with result: " ++ show result
+       Left _ -> return ()
 
 shouldParsePartially :: Parser a -> T.Text -> Expectation
 shouldParsePartially parser input =
-  case parse parser "" input of
-    Right _ -> do
-      case parse (parser <* eof) "" input of
-        Right _ -> expectationFailure "Expected partial parsing, but succeeded to parse the whole input"
-        Left _ -> return ()
-    Left err -> expectationFailure $
-      "Expected partial parsing, but failed to parse anything: " ++ show err
+  let (partialRes, _) = runState (runParserT parser "" input) emptyMetrics
+      (fullRes, _) = runState (runParserT (parser <* eof) "" input) emptyMetrics
+  in case (partialRes, fullRes) of
+       (Right _, Left _) -> return ()
+       (Right _, Right _) -> expectationFailure "Expected partial parsing, but full parse succeeded"
+       (Left err, _) -> expectationFailure $
+         "Expected partial parsing, but failed completely: " ++ show err
 
 
 spec :: Spec

@@ -51,6 +51,20 @@ library:
     - Md2HtmlParser.HTML
     - Md2HtmlParser.CLI
     - Md2HtmlParser.Logger
+    - Md2HtmlParser.Metrics
+    - Md2HtmlParser.GeneratorUtil
+  dependencies:
+    - base
+    - parsec
+    - text
+    - megaparsec
+    - containers
+    - directory
+    - optparse-applicative
+    - transformers
+    - mtl
+    - filepath
+    - QuickCheck
 
 executables:
   Md2HtmlParser-exe:
@@ -61,7 +75,20 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - QuickCheck
     - Md2HtmlParser
+
+  metrics-one-run:
+    main: Main.hs
+    source-dirs: metrics-one-run
+    ghc-options: -Wall
+    dependencies:
+      - base
+      - text
+      - megaparsec
+      - mtl
+      - QuickCheck
+      - Md2HtmlParser
 
 tests:
   Md2HtmlParser-test:

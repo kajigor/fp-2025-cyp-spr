@@ -8,21 +8,28 @@ import qualified Data.Text as T
 import Text.Megaparsec (parse, eof)
 import Md2HtmlParser.Parser
 import Md2HtmlParser.Parser.Utils (Parser)
+import Text.Megaparsec (runParserT, eof)
+import Control.Monad.State.Strict (runState)
+import Md2HtmlParser.Metrics (emptyMetrics)
 
 -- Helper to handle parsing results and throw proper test failures
 parseMdOrFail :: Parser a -> T.Text -> IO a
 parseMdOrFail parser input =
-  case parse (parser <* eof) "" input of
-    Right result -> return result
-    Left err -> expectationFailure ("Failed to parse: " ++ show err) >> undefined
+  let parserAction = runParserT (parser <* eof) "" input
+      (result, _) = runState parserAction emptyMetrics
+  in case result of
+       Right x -> return x
+       Left err -> expectationFailure ("Failed to parse: " ++ show err) >> undefined
 
 -- Helper to check if parsing fails as expected
 shouldFailToParse :: Show a => Parser a -> T.Text -> Expectation
 shouldFailToParse parser input =
-  case parse parser "" input of
-    Right result -> expectationFailure $ 
-      "Expected parsing to fail, but succeeded with result: " ++ show result
-    Left _ -> return () -- Error is expected, so test passes
+  let parserAction = runParserT parser "" input
+      (result, _) = runState parserAction emptyMetrics
+  in case result of
+       Right result -> expectationFailure $
+         "Expected parsing to fail, but succeeded with result: " ++ show result
+       Left _ -> return ()
 
 spec :: Spec
 spec = do

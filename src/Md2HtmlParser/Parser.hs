@@ -39,24 +39,24 @@ import Md2HtmlParser.Parser.Utils
     takeUntilSpecialOrNewline,
     takeUntilSpecialOrNewlineOrEmpty,
     textString,
+    char,
+    takeWhileP,
+    manyTill,
+    endOfFile,
   )
 import System.IO.Unsafe (unsafePerformIO)
+import qualified Text.Megaparsec as M
 import Text.Megaparsec
   ( anySingle,
     choice,
-    eof,
     getInput,
-    many,
-    manyTill,
     optional,
     satisfy,
     some,
-    takeWhileP,
     try,
     (<?>),
     (<|>),
   )
-import Text.Megaparsec.Char (char, string)
 
 -- | Logs parser execution and returns the result
 withLogs :: (Show a) => String -> Parser a -> Parser a
@@ -118,28 +118,28 @@ parsePlainText =
 parseItalic :: Parser InlineElement
 parseItalic = withLogs "parseItalic" $ do
   start <- try (textString "_") <|> try (textString "*")
-  content <- try (some parseInlineElement)
+  content <- (some parseInlineElement)
   _ <- textString (Text.unpack start)
   return $ ItalicText content
 
 parseBold :: Parser InlineElement
 parseBold = withLogs "parseBold" $ do
   start <- try (textString "__") <|> try (textString "**")
-  content <- try (some parseInlineElement)
+  content <- some parseInlineElement
   _ <- textString (Text.unpack start)
   return $ BoldText content
 
 parseCodeText :: Parser InlineElement
 parseCodeText = withLogs "parseCodeText" $ do
   _ <- char '`'
-  content <- takeWhileP (Just "code text") (\c -> not (c == '`' || c == '\n'))
+  content <- takeWhileP (\c -> not (c == '`' || c == '\n'))
   _ <- char '`'
   return $ CodeText content
 
 parseLinkText :: Parser InlineElement
 parseLinkText = withLogs "parseLinkText" $ do
-  text <- square (many parseInlineElement)
-  url <- try (parens takeUntilAllowedInLink)
+  text <- square (M.many parseInlineElement)
+  url <- parens takeUntilAllowedInLink
   return $ LinkText text url
 
 parseImageText :: Parser InlineElement
@@ -155,8 +155,8 @@ parseInlineNoBold =
     choice
       [ parseImageText,
         parseLinkText,
-        try parseCodeText,
-        try parseItalic,
+        parseCodeText,
+        parseItalic,
         parsePlainText
       ]
 
@@ -166,8 +166,8 @@ parseInlineNoItalic =
     choice
       [ parseImageText,
         parseLinkText,
-        try parseCodeText,
-        try parseBold,
+        parseCodeText,
+        parseBold,
         parsePlainText
       ]
 
@@ -187,30 +187,30 @@ parseMdHeader :: Parser MarkdownElement
 parseMdHeader = withLogs "parseMdHeader" $ do
   level <- length <$> some (char '#')
   _ <- char ' '
-  content <- many parseInlineElement
-  _ <- endOfLine *> pure () <|> eof
+  content <- M.many parseInlineElement
+  _ <- endOfLine *> pure () <|> endOfFile
   return $ Header level content
 
 parseParagraph :: Parser MarkdownElement
 parseParagraph = withLogs "parseParagraph" $ do
   content <- some parseInlineElement
-  _ <- endOfLine *> pure () <|> eof
+  _ <- endOfLine *> pure () <|> endOfFile
   return $ Paragraph content
 
 parseCodeBlock :: Parser MarkdownElement
 parseCodeBlock = withLogs "parseCodeBlock" $ do
-  _ <- string (Text.pack "```")
-  lang <- optional $ takeWhileP (Just "language") (\c -> not (c == '\n' || c == ' '))
+  _ <- textString "```"
+  lang <- optional $ takeWhileP (\c -> not (c == '\n' || c == ' '))
   _ <- endOfLine
   content <-
     manyTill
       anySingle
       ( try $ do
           _ <- endOfLine
-          _ <- string (Text.pack "```")
+          _ <- textString "```"
           return ()
       )
-  _ <- endOfLine *> pure () <|> eof
+  _ <- endOfLine *> pure () <|> endOfFile
   let language = case lang of
         Just l | not (T.null l) -> Just (T.stripEnd l)
         _ -> Nothing
@@ -221,16 +221,16 @@ parseBulletListInlineElem = withLogs "parseBulletListInlineElem" $ do
   _ <- (char '*' <?> "* point") <|> (char '-' <?> "- point")
   _ <- char ' ' <?> "space"
 
-  many parseInlineElement
+  M.many parseInlineElement
 
 parseBulletList :: Parser MarkdownElement
 parseBulletList = withLogs "parseBulletList" $ do
-  level <- length <$> many (char ' ')
+  level <- length <$> M.many (char ' ')
   firstItem <- parseBulletListInlineElem
-  restItems <- many $ try $ do
+  restItems <- M.many $ try $ do
     _ <- endOfLine
     indented level parseBulletListInlineElem
-  _ <- endOfLine *> pure () <|> eof
+  _ <- endOfLine *> pure () <|> endOfFile
   return $ BulletList (firstItem : restItems)
 
 parseNumberedListInlineElem :: Parser [InlineElement]
@@ -239,23 +239,23 @@ parseNumberedListInlineElem = withLogs "parseNumberedListInlineElem" $ do
   _ <- char '.' <?> "period"
   _ <- char ' ' <?> "space"
 
-  many parseInlineElement
+  M.many parseInlineElement
 
 parseNumberedList :: Parser MarkdownElement
 parseNumberedList = withLogs "parseNumberedList" $ do
-  level <- length <$> many (char ' ')
+  level <- length <$> M.many (char ' ')
   firstItem <- parseNumberedListInlineElem
-  restItems <- many $ try $ do
+  restItems <- M.many $ try $ do
     _ <- endOfLine
     indented level parseNumberedListInlineElem
-  _ <- endOfLine *> pure () <|> eof
+  _ <- endOfLine *> pure () <|> endOfFile
   return $ NumberedList (firstItem : restItems)
 
 parseHorizontalRule :: Parser MarkdownElement
 parseHorizontalRule = withLogs "parseHorizontalRule" $ do
-  _ <- string (Text.pack "---") <|> string (Text.pack "***") <|> string (Text.pack "___")
-  _ <- many $ char ' '
-  _ <- endOfLine *> pure () <|> eof
+  _ <- textString "---" <|> textString "***" <|> textString "___"
+  _ <- M.many $ char ' '
+  _ <- endOfLine *> pure () <|> endOfFile
   return HorizontalRule
 
 parseEmptyLine :: Parser MarkdownElement
@@ -277,5 +277,5 @@ parseMarkdownElement =
 
 parseMarkdownDoc :: Parser MarkdownDoc
 parseMarkdownDoc = withLogs "parseMarkdownDoc" $ do
-  content <- many parseMarkdownElement
+  content <- M.many parseMarkdownElement
   return $ MarkdownDoc content
