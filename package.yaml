@@ -1,0 +1,113 @@
+name:                Md2HtmlParser
+version:             0.1.0.0
+github:              "githubuser/Md2HtmlParser"
+license:             BSD-3-Clause
+author:              "Author name here"
+maintainer:          "example@example.com"
+copyright:           "2025 Author name here"
+
+extra-source-files:
+- README.md
+- CHANGELOG.md
+
+# Metadata used when publishing your package
+synopsis:            A Markdown to HTML parser and converter
+category:            Text
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         A Haskell library and command-line tool for parsing Markdown and converting it to HTML
+
+dependencies:
+- base >= 4.7 && < 5
+- parsec >= 3.1.14
+- text >= 1.2
+- megaparsec >= 9.0.0
+- containers
+- directory
+- optparse-applicative >= 0.15
+- transformers
+- mtl
+- filepath
+
+ghc-options:
+- -Wall
+- -Wcompat
+- -Widentities
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wmissing-export-lists
+- -Wmissing-home-modules
+- -Wpartial-fields
+- -Wredundant-constraints
+
+library:
+  source-dirs: src
+  exposed-modules:
+    - Md2HtmlParser
+    - Md2HtmlParser.Parser
+    - Md2HtmlParser.Parser.Utils
+    - Md2HtmlParser.HTML
+    - Md2HtmlParser.CLI
+    - Md2HtmlParser.Logger
+    - Md2HtmlParser.Metrics
+    - Md2HtmlParser.GeneratorUtil
+  dependencies:
+    - base
+    - parsec
+    - text
+    - megaparsec
+    - containers
+    - directory
+    - optparse-applicative
+    - transformers
+    - mtl
+    - filepath
+    - QuickCheck
+
+executables:
+  Md2HtmlParser-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - QuickCheck
+    - Md2HtmlParser
+
+  metrics-one-run:
+    main: Main.hs
+    source-dirs: metrics-one-run
+    ghc-options: -Wall
+    dependencies:
+      - base
+      - text
+      - megaparsec
+      - mtl
+      - QuickCheck
+      - Md2HtmlParser
+
+tests:
+  Md2HtmlParser-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - Md2HtmlParser
+    - hspec >= 2.7
+    - hspec-megaparsec
+    - megaparsec
+    - parsec
+    - text
+    - QuickCheck
+    - containers
+    - directory
+    - filepath
+    - mtl
+    - transformers

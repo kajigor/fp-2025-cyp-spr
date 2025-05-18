@@ -1,0 +1,139 @@
+cabal-version: 2.2
+
+-- This file has been generated from package.yaml by hpack version 0.37.0.
+--
+-- see: https://github.com/sol/hpack
+
+name:           Md2HtmlParser
+version:        0.1.0.0
+synopsis:       A Markdown to HTML parser and converter
+description:    A Haskell library and command-line tool for parsing Markdown and converting it to HTML
+category:       Text
+homepage:       https://github.com/githubuser/Md2HtmlParser#readme
+bug-reports:    https://github.com/githubuser/Md2HtmlParser/issues
+author:         Author name here
+maintainer:     example@example.com
+copyright:      2025 Author name here
+license:        BSD-3-Clause
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    CHANGELOG.md
+
+source-repository head
+  type: git
+  location: https://github.com/githubuser/Md2HtmlParser
+
+library
+  exposed-modules:
+      Md2HtmlParser
+      Md2HtmlParser.Parser
+      Md2HtmlParser.Parser.Utils
+      Md2HtmlParser.HTML
+      Md2HtmlParser.CLI
+      Md2HtmlParser.Logger
+      Md2HtmlParser.Metrics
+      Md2HtmlParser.GeneratorUtil
+  other-modules:
+      Paths_Md2HtmlParser
+  autogen-modules:
+      Paths_Md2HtmlParser
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  build-depends:
+      QuickCheck
+    , base
+    , containers
+    , directory
+    , filepath
+    , megaparsec
+    , mtl
+    , optparse-applicative
+    , parsec
+    , text
+    , transformers
+  default-language: Haskell2010
+
+executable Md2HtmlParser-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_Md2HtmlParser
+  autogen-modules:
+      Paths_Md2HtmlParser
+  hs-source-dirs:
+      app
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      Md2HtmlParser
+    , QuickCheck
+    , base >=4.7 && <5
+    , containers
+    , directory
+    , filepath
+    , megaparsec >=9.0.0
+    , mtl
+    , optparse-applicative >=0.15
+    , parsec >=3.1.14
+    , text >=1.2
+    , transformers
+  default-language: Haskell2010
+
+executable metrics-one-run
+  main-is: Main.hs
+  other-modules:
+      Paths_Md2HtmlParser
+  autogen-modules:
+      Paths_Md2HtmlParser
+  hs-source-dirs:
+      metrics-one-run
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wall
+  build-depends:
+      Md2HtmlParser
+    , QuickCheck
+    , base
+    , containers
+    , directory
+    , filepath
+    , megaparsec
+    , mtl
+    , optparse-applicative >=0.15
+    , parsec >=3.1.14
+    , text
+    , transformers
+  default-language: Haskell2010
+
+test-suite Md2HtmlParser-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      CodeBlockSpec
+      HTMLSpec
+      InlineElementSpec
+      LinkAndImageSpec
+      ListParsingSpec
+      MarkdownDocSpec
+      ParserPropertyTestSpec
+      Paths_Md2HtmlParser
+  autogen-modules:
+      Paths_Md2HtmlParser
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      Md2HtmlParser
+    , QuickCheck
+    , base >=4.7 && <5
+    , containers
+    , directory
+    , filepath
+    , hspec >=2.7
+    , hspec-megaparsec
+    , megaparsec
+    , mtl
+    , optparse-applicative >=0.15
+    , parsec
+    , text
+    , transformers
+  default-language: Haskell2010

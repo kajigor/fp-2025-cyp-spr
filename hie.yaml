@@ -1,0 +1,11 @@
+cradle:
+  stack:
+    components:
+      - path: "./src"
+        component: "Md2HtmlParser:lib"
+      - path: "./app/Main.hs"
+        component: "Md2HtmlParser:exe:Md2HtmlParser-exe"
+      - path: "./test"
+        component: "Md2HtmlParser:test:Md2HtmlParser-test"
+      - path: "./Setup.hs"
+        component: "Md2HtmlParser:setup"

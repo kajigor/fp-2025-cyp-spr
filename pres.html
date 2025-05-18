@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Md2HtmlParser Project Presentation</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden; /* Hide scrollbars */
+            font-family: sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .slide {
+            width: 90%;
+            max-width: 800px;
+            height: 80vh;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+            box-sizing: border-box;
+            text-align: center;
+            opacity: 0; /* Start hidden */
+            transition: opacity 0.5s ease-in-out;
+            position: absolute; /* Position slides on top of each other */
+        }
+
+        .slide.active {
+            opacity: 1; /* Show active slide */
+            position: relative; /* Bring active slide to front */
+        }
+
+        h1, h2 {
+            color: #333;
+        }
+
+        p {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        pre {
+            background-color: #eee;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto; /* Add scroll for wide code */
+            text-align: left;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        code {
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        ul {
+            text-align: left;
+            margin-top: 20px;
+        }
+
+        li {
+            margin-bottom: 10px;
+            color: #555;
+        }
+
+        .navigation {
+            position: absolute;
+            bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.3s ease;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+<div class="slide">
+    <h1>Md2HtmlParser</h1>
+    <h2>A Markdown to HTML Converter in Haskell</h2>
+    <p>Overview of the project and its core components.</p>
+    <p>Presentation Outline:</p>
+    <ul>
+        <li>Markdown vs HTML</li>
+        <li>The Parser</li>
+        <li>Logging</li>
+        <li>HTML Rendering</li>
+        <li>CLI Utility</li>
+    </ul>
+</div>
+
+<div class="slide">
+    <h2>Markdown vs HTML</h2>
+    <p><strong>Markdown:</strong> A lightweight markup language with plain text formatting syntax. Easy to read and write.</p>
+    <p><strong>HTML:</strong> The standard markup language for creating web pages. Describes the structure and content of web pages.</p>
+    <p>Our project converts Markdown text into structured HTML.</p>
+</div>
+
+<div class="slide">
+    <h2>The Parser</h2>
+    <p>Implemented using the <strong>Megaparsec</strong> library.</p>
+    <p>Parses Markdown input into an Abstract Syntax Tree (AST) represented by the <code>MarkdownDoc</code> data type.</p>
+    <p>Key components include parsers for headers, lists, emphasis, code blocks, etc.</p>
+    <pre><code>data MarkdownElement
+  = Header Int [InlineElement]
+  | Paragraph [InlineElement]
+  | CodeBlock (Maybe Text) Text
+  | BulletList [[InlineElement]]
+  | NumberedList [[InlineElement]]
+  | HorizontalRule
+  | EmptyLine
+  | BlockQuote [MarkdownElement]</code></pre>
+</div>
+
+<div class="slide">
+    <h2>The Parser (cont.)</h2>
+    <p>Handles both block-level and inline elements.</p>
+    <p>Uses combinators from Megaparsec to build complex parsers from simpler ones.</p>
+    <pre><code>parseMarkdownDoc :: Parser MarkdownDoc
+parseMarkdownDoc = withLogs "parseMarkdownDoc" $ do
+  content <- many parseMarkdownElement
+  return $ MarkdownDoc content</code></pre>
+    <p>The <code>Utils.hs</code> module provides common parsing utilities.</p>
+</div>
+
+<div class="slide">
+    <h2>Logging</h2>
+    <p>The <code>Logger.hs</code> module provides simple logging functionality.</p>
+    <p>Includes functions for informational (<code>logInfo</code>) and debug (<code>logDebug</code>) messages.</p>
+    <pre><code>logInfo :: MonadIO m => Text -> m ()
+logInfo msg = liftIO $ hPutStrLn stderr $ "[INFO] " ++ T.unpack msg
+
+logDebug :: MonadIO m => Text -> m ()
+logDebug msg = liftIO $ do
+  enabled <- isDebugEnabled
+  if enabled
+    then hPutStrLn stderr $ "[DEBUG] " ++ T.unpack msg
+    else return ()</code></pre>
+</div>
+
+<div class="slide">
+    <h2>Logging (cont.)</h2>
+    <p>Specific logging for parser calls and results is included for debugging parsing logic.</p>
+    <p>Debugging can be enabled via the command-line interface.</p>
+    <pre><code>logParserCall :: String -> String -> IO ()
+logParserCall name input = do
+  enabled <- isParserDebugEnabled
+  if enabled
+    then do
+      hPutStrLn stderr $ "[PARSER] Call: " ++ name
+      hPutStrLn stderr $ "[PARSER] Input: \"" ++ input ++ "\""
+    else return ()</code></pre>
+</div>
+
+<div class="slide">
+    <h2>HTML Rendering</h2>
+    <p>The <code>HTML.hs</code> module is responsible for converting the Markdown AST into an HTML structure.</p>
+    <p>Defines data types for HTML elements and attributes.</p>
+    <pre><code>data HtmlElement
+  = HtmlTag Text [HtmlAttribute] [HtmlElement]
+  | HtmlText Text
+
+data HtmlAttribute = HtmlAttribute Text Text</code></pre>
+</div>
+
+<div class="slide">
+    <h2>HTML Rendering (cont.)</h2>
+    <p>The <code>markdownToHtml</code> function traverses the Markdown AST and generates the corresponding HTML structure.</p>
+    <p>The <code>renderHtml</code> function serializes the HTML structure into a final HTML string.</p>
+    <pre><code>markdownToHtml :: MarkdownDoc -> HtmlDoc
+renderHtml :: HtmlDoc -> Text</code></pre>
+</div>
+
+<div class="slide">
+    <h2>CLI Utility</h2>
+    <p>The <code>CLI.hs</code> module provides a command-line interface using the <code>optparse-applicative</code> library.</p>
+    <p>Allows specifying input and output files (or using stdin/stdout).</p>
+    <pre><code>data Options = Options
+  { optInput    :: Maybe FilePath
+  , optOutput   :: Maybe FilePath
+  , optVerbose  :: Bool
+  }</code></pre>
+</div>
+
+<div class="slide">
+    <h2>CLI Utility (cont.)</h2>
+    <p>The <code>run</code> function orchestrates the entire process: reading input, parsing, converting, and writing output based on the provided options.</p>
+    <p>Includes verbose mode for logging.</p>
+    <pre><code>run :: Options -> IO ()</code></pre>
+    <p>Usage: <code>stack run Md2HtmlParser-exe -- -i input.md -o output.html -v</code></p>
+</div>
+
+<div class="navigation">
+    <button id="prevBtn" disabled>Previous</button>
+    <button id="nextBtn">Next</button>
+</div>
+
+<script>
+    const slides = document.querySelectorAll('.slide');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    let currentSlideIndex = 0;
+
+    function showSlide(index) {
+        slides.forEach((slide, i) => {
+            slide.classList.remove('active');
+            if (i === index) {
+                slide.classList.add('active');
+            }
+        });
+        prevBtn.disabled = index === 0;
+        nextBtn.disabled = index === slides.length - 1;
+    }
+
+    function nextSlide() {
+        if (currentSlideIndex < slides.length - 1) {
+            currentSlideIndex++;
+            showSlide(currentSlideIndex);
+        }
+    }
+
+    function prevSlide() {
+        if (currentSlideIndex > 0) {
+            currentSlideIndex--;
+            showSlide(currentSlideIndex);
+        }
+    }
+
+    // Event listeners for buttons
+    nextBtn.addEventListener('click', nextSlide);
+    prevBtn.addEventListener('click', prevSlide);
+
+    // Optional: Add keyboard navigation (arrow keys)
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowRight') {
+            nextSlide();
+        } else if (event.key === 'ArrowLeft') {
+            prevSlide();
+        }
+    });
+
+    // Show the first slide on load
+    showSlide(currentSlideIndex);
+</script>
+
+</body>
+</html>
